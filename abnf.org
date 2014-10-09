@@ -1,0 +1,133 @@
+#+FILETAGS: REFULANG
+
+Grammar for Refu in [[http://tools.ietf.org/html/rfc5234][ABNF]] format
+
+* Terminal rules (tokens)
+TOKEN_KW_CONST = "const"
+TOKEN_KW_TYPE = "type"
+TOKEN_KW_FUNCTION = "fn"
+TOKEN_KW_IF = "if"
+TOKEN_KW_ELIF = "elif"
+TOKEN_KW_ELSE = "else"
+
+TOKEN_SM_COLON = ":"
+TOKEN_SM_OCBRACE = "{"
+TOKEN_SM_CCBRACE = "}"
+TOKEN_SM_OPAREN = "("
+TOKEN_SM_CPAREN = ")"
+
+TOKEN_OP_PLUS        = "+"
+TOKEN_OP_MINUS       = "-"
+TOKEN_OP_MULTI       = "*"
+TOKEN_OP_DIV         = "/"
+TOKEN_OP_INC         = "++"
+TOKEN_OP_DEC         = "--"
+TOKEN_OP_ASSIGN      = "="
+TOKEN_OP_EQ          = "=="
+TOKEN_OP_NEQ         = "!="
+TOKEN_OP_GT          = ">"
+TOKEN_OP_GTEQ        = ">="
+TOKEN_OP_LT          = "<"
+TOKEN_OP_LTEQ        = "<="
+TOKEN_OP_TYPESUM     = "|"
+TOKEN_OP_COMMA       = ","
+TOKEN_OP_IMPL        = "->"
+TOKEN_OP_LOGICAND    = "&&"
+TOKEN_OP_LOGICOR     = "||"
+
+EMPTY = ""
+
+* Non terminal rules
+root = statements
+statements = *statement
+statement = block
+          / function_declaration
+          / module_signature
+          / module_implementation
+          / interface_declaration
+          / interface_implementation
+          / data_declaration
+          / variable_declaration
+
+expression = identifier
+           / string_literal
+           / numeric
+           / if_expression
+           / binary_op_expression
+           / unary_op_expression
+
+expression_list = expression
+                / expression_list "," expression
+
+binary_op = "=" "+" "*" "/" "%" ">" ">=" "<" "<=" "==" "!="
+binary_op_expression = expression binary_op expression
+
+unary_op = "&" "*" "!" "++" "--"
+unary_op_expression = unary_op expression
+
+block = "{" statements "}"
+
+module_declaration = signature identifier block
+module_implmentation = identifier "implof" identifier block
+
+identifiers_list = identifier / identifiers_list "," identifier
+generic_attributes = "<" identifiers_list ">"
+generic_type = "type" / OTHERS
+generic_arguments_list = identifier ":" generic_type
+                       / generic_arguments_list "," identifier ":" generic_type
+generic_declaration = "<" generic_arguments_list ">"
+
+array_attributes = numeric
+array_declaration = "[" array_attributes"]"
+
+memory_attributes = array_declaration
+                  / "*"
+                  / "&"
+                  / "ptr[~]"
+                  / "ptr[@]"
+
+
+type_description = type_term type_description'
+ 
+type_description' = TOKEN_OP_IMPL type_term type_description'
+                  / EMPTY
+
+ 
+type_term = type_factor type_term'
+ 
+type_term' = TOKEN_OP_TYPESUM type_factor type_term'
+           / EMPTY
+
+type_factor = type_element type_factor'
+
+type_factor' = TOKEN_OP_IMPL type_element type_factor'
+             / EMPTY
+ 
+type_element = TOKEN_SM_OPAREN type_description TOKEN_SM_CPAREN
+             / identifier TOKEN_SM_COLON annotated_identifier
+             / annotated_identifier
+
+type_declaration = TOKEN_KW_TYPE TOKEN_SM_OCBRACE type_description TOKEN_SM_CCBRACE
+
+
+type_declaration = identifier [generic_attributes]
+decorated_type_declaration = [memory_attributes] type_declaration
+variable_declaration = identifier ":" decorated_type_declaration
+
+data_op_token = "," / "|" / "->"
+data_op = data_desc data_op_token data_desc
+data_desc = data_op
+          / identifier ":" data_desc
+          / identifier
+
+data_declaration = "data" identifier [generic_declaration] "{" data_desc "}"
+
+variable_list = variable_declaration
+              / variable_list "," variable_declaration
+
+function_declaration = "fn" identifier [generic_declaration] "(" variable_list ")" ["->" decorated_type_declaration]
+function_implementation = function_declaration block
+function_call = identifier [generic_attributes] "(" expression_list ")"
+
+interface_declaration = "interface" identifier [generic_declaration] "{" 1*function_declaration"}"
+interface_implementation = "implof" identifier function_implementation
