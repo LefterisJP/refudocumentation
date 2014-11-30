@@ -1,0 +1,4 @@
+# all files that can be generated from org mode
+*.tex
+*.pdf
+*.html

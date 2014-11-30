@@ -1,393 +1,26 @@
-#+FILETAGS: REFULANG
+#+TITLE: Refu language specification
+#+AUTHOR: Lefteris Karapetsas
 
-* Language specification
-** Interfaces
-*** Specification
-Refu relies heavily on the use of interfaces. Interfaces are an important
-way to guarantee behaviour about objects. There are quite a few builtin
-interfaces in the standard library. Here is one example which defines the
-interface for the adding function. This allows an object to define how it
-shall be added. One can notice the keyword =self= which defines the object
-the function will be called for and also the generic syntax of <type T>
-since we can't know the type of the object we are adding.
-
-#+BEGIN_SRC C++
-interface adder<type T> {
-   fn(self:&T, other:c:~T) -> T
-}
-//An implementation would declare that it implements the adder interface like below
-vec_adder implof adder for vector {
-   fn(self, other:c:~vector) -> vector
-   {
-       ret:vector
-       ret.x = self.x + other.x
-       ret.y = self.y + other.y
-       ret.z = self.z + other.z
-       return z
-   }
-}
-#+END_SRC
-
-An important thing about interfaces is that data types can implement EACH
-and every single interface in a different place in the code.
-Rationale: Picture you buy the code from someone and you can't change the
-implementation and have only the headers and you need to implement some
-extra interfaces without changing the original code.
-
-Another additional concern is on cases where you may want to have a
-different implementation of an interface changed and swapped even in
-runtime. Imagine that there is this interface called 'Ordering'
-which denotes how the members of something should be ordered.
-Then we have two implementation of this interface, both implemented by a
-data type, say a list. One implements an ascending order ordering and the
-other a descending order ordering. There should be a way to choose in
-runtime which of the two implementations the ordering would use.
-
-So let's look at the following example, which will not compile.
-#+BEGIN_SRC C++
-ord_ascend implof ordering for vector {
-    fn(self)
-    {
-        ...
-    }
-}
-
-ord_descend implof ordering for vector {
-    fn(self)
-    {
-        ...
-    }
-}
-#+END_SRC
-
-Why will this not compile? Well simply because 2 different implementations
-of an interface are declared for a type without specifying one as the
-default implementation for all objects of type vector.
-#+BEGIN_SRC C++
-ord_ascend dimplof ordering for vector {
-    fn(self)
-    {
-        ...
-    }
-}
-
-ord_descend implof ordering for vector {
-    fn(self)
-    {
-        ...
-    }
-}
-#+END_SRC
-
-With the above code we can declare the =ord_ascend= implementation as
-default and as such all vector types unless otherwisespecified will have
-this implementation for the ordering interface
+This is currently a work in progress. Nothing is final, nor decided but the purpose
+of this document is to gather everything in one place so that the formal spec of the
+language slowly takes shape.
 
 
-#+BEGIN_SRC C++
-a:list // ord_ascend
-b:list<ordering: ord_ascend> // ord_ascend
-c:list<ordering: ord_descend> //ord_descend
-#+END_SRC
-
-*** Thoughts
-** Error Handling
-*** Specification
-(Nice info about [[http://en.wikibooks.org/wiki/Computer_Programming/Error_handling][error handling]] in general and [[http://en.wikibooks.org/wiki/Computer_Programming/Design_by_Contract][Design by contract]] )
-Error handling is a very serious topic. Refu attempts to make it easy for
-the developer to handle all erroneous conditions with ease without
-cluttering the implementation of functions. We aim to make it easy to
-handle errors and we assume that the execution path in case of an error
-is not performance critical since errors are and should always be
-extraneous situations.
-(Just like they mention in the [[http://dlang.org/errors.html][D language error page]])
-
-There are multiple ways to actually handle errors in a function and we
-will present them here.
-
-- Exceptions
-  Exceptions can be raised at any point during the code and the stack
-  will unwind, calling the deallocators of all objects it encounters
-  until a catch is hit.
-
-  #+BEGIN_SRC C++
-  exceptions {
-  negative_double_in_sqrt
-  some_other_exception ...
-  }
-  fn calculate_square_root(a:double) -> double
-  {
-      if (a < 0.0) {
-           raise // this would raise a generic anonymous exception
-           raise negative_double_in_sqrt("Omg noez") // raise a specific exception
-      }
-      return a*a
-   }
-
-
-   ....
-   ....
-
-   try {
-       ...
-       calculate_square_root(-1.0)
-
-   } catch (e){
-       negative_double_in_sqrt =>  do something
-       print(e.str)
-       _ => {
-           print(e.error_str) //the message of the raise
-           print(e.location_str) //the location of the raise (function, line_no, file)
-       }
-}
-#+END_SRC
-
-Exceptions can also be part of an exception class. There are some
-built-in exception classes defined in the standard library
-like std::exceptions::memory, std.exceptions.io and
-std::exceptions::numeric. To define an exception as a member of an
-exception class the following syntax is used:
-
-exception negative_double_in_sqrt partof std::exceptions::numeric
-exceptions {
-     negative_double_in_sqrt partof std::exceptions::numeric
-     some_other_exception ...
-}
-
-- Design By Contract
-  A function can have a contract with its caller. Such contracts are made up
-  of calling preconditions and calling postconditions. If possible these
-  checks are performed in compile time, and compiled away for the runtime.
-  If not they raise an exception in runtime. The user has the option to
-  completely disable them for a release build.
-  (Have to think if this should actually happen)
-#+BEGIN_SRC C++
-calculate_square_root(a:double) -> double
-precond(a >= 0.0)
-postcond(result >= 0.0) //not needed, but just here as an example
-{
-    return a*a;
-}
-#+END_SRC
-*** Thoughts
-** Modules
-*** Specification
-Programs and libraries written in Refu are divided in modules. A module
-can be imported from other parts of code as is, like:
-#+BEGIN_SRC C++
-import geometry
-#+END_SRC
-
-Certain functions, structs or data from modules can also be imported
-alone so that the global namespace is not polluted.
-#+BEGIN_SRC C++
-import vector3d, model from geometry
-#+END_SRC
-
-Additionally, imported objects can be given an alias so as to avoid
-name conflicts
-
-#+BEGIN_SRC C++
-import vector3d, model from geometry as vector_imp, model_imp
-#+END_SRC
-
-
-To encapsulate code into a module one would need to enclose it in
-a module block like so:
-
-#+BEGIN_SRC C++
-module geometry{
-...
-...
-...
-}
-#+END_SRC
-
-
-Modules encompass functionality. In order to allow separation between
-private and public module objects there are 2 different ways to arrange
-modules. One is as shown above, having all of the module related code
-encompassed in a identifier module { ... } block. In that case everything
-would be private in the module by default. To mark something as public and
-exportable to other modules then you would have to prepend it with the
-=export= keyword.
-
-#+BEGIN_SRC C++
-module geometry{
-
-    struct private_foo{
-    ...
-    }
-
-    //model will be exported since it has the export attribute
-    export struct model{
-    }
-
-    //this function will be visible from outside the module
-    export fn some_public_function(..) ->foo
-    {
-    }
-
-    //this function will not be visible from outside the module
-    fn private_function(..) -> foo
-    {
-    }
-
-}//end of module
-#+END_SRC
-
-Another way to organize modules and by far the preferred way is to
-separate a module's signature from its implementation. This allows for
-separation of interface from implementation, module typechecking, cleaner
-code look and most importantly multiple implementation of module code for
-different systems.
-
-As an example consider an IO module that implements I/O functionality for
-Linux, Windows, ARM or even javascript!
-
-#+BEGIN_SRC C++
-signature io {
-    data file; /* definition is in module implementation */
-
-    fn open(name:~string) -> ~file
-    fn read(f:~file) -> ~bytes
-    fn write(f:~file, b:~bytes) -> int
-}
-#+END_SRC
-
-and in two other separate files, the module implementation could be like
-this for a different windows and linux implementation.
-#+BEGIN_SRC C++
-linux_io implof io {
-    data file {
-        ...
-    }
-
-    fn open(name:~string) -> ~file
-    {
-        ...
-    }
-    fn read(f:~file) -> ~bytes
-    {
-        ...
-    }
-    fn write(f:~file, b:~bytes) -> int
-    {
-        ...
-    }
-}
-#+END_SRC
-
-#+BEGIN_SRC C++
-windows_io implof io {
-    data file {
-        ...
-    }
-
-    fn open(name:~string) -> ~file
-    {
-        ...
-    }
-    fn read(f:~file) -> ~bytes
-    {
-        ...
-    }
-    fn write(f:~file, b:~bytes) -> int
-    {
-        ...
-    }
-}
-#+END_SRC
-Anything not in the signature of a module is going to be private to a
-particular module implementation.
-
-Modules can also accept arguments. Irrespective of the way you declare a
-module it can always accept arguments.
-- *Signature*
-   #+BEGIN_SRC C++
-   signature test_module(g:geometry, buffer_size:int = 512) {
-
-       fn do_something()
-       fn do_something_with_geometry(t:g::triangle)
-       ...
-
-   }
-
-   test implof test_module(g:geometry, buffer_size:int) {
-       import g //import the module we passed as argument
-
-       do_something()
-       {
-           allocate_buffer(buffer_size)
-       }
-
-       do_something_with_geometry(t:g::triangle) -> f32
-       {
-           return g::calculate_area_of_triangle(t)
-       }
-
-   }
-   #+END_SRC
-
-- *Without Signature*
-
-  #+BEGIN_SRC C++
-  module test_module(g:geometry, buffer_size:int = 512) {
-      import g //import the module we passed as argument
-
-       export do_something()
-       {
-           allocate_buffer(buffer_size)
-       }
-
-       export do_something_with_geometry(t:g::triangle) -> f32
-       {
-           return g::calculate_area_of_triangle(t)
-       }
-   }
-  #+END_SRC
-
-In order to import this from some other place in the code you would do
-something like the following:
-#+BEGIN_SRC C++
-import some_module(my_geometry, 1024)
-#+END_SRC
-
-*** Thoughts
-Where should the modules be searched for? How should linking other libraries
-work?
-** Parallel Processing Framework / Parallel Routines
-*** Specification
-In Refu many small lightweight threads can be spawned. They are called
-routines and can be created with the rt keyword.
-For example:
-
-#+BEGIN_SRC C++
-fn print_some_stuff()
-{
-   print("eleos")
-   print("lol"
-}
-//run print_some_stuff in another thread
-rt print_some_stuff
-#+END_SRC
-
-Routines can be communicated to via message passing. ...
-More thinking to go here ...TODO
-*** Thoughts
-** Built-in data types
-*** Specification
+* Built-in data types
+** Specification
 The following data types are built-in. Some of them correspond to the data types
 defined by the C99 standard in =<stdint.h>= but they follow the same naming
 scheme as in rust.
 
 - *Unsigned numbers*
+  + =uint=: compiler will decide the size depending on context
   + =u8=: 8 bit unsigned integer, corresponding to =uint8_t=
   + =u16=: 16 bit unsigned integer, corresponding to =uint16_t=
   + =u32=: 32 bit unsigned integer, corresponding to =uint32_t=
   + =u64=: 64 bit unsigned integer, corresponding to =uint64_t=
 
 - *Signed numbers*
+  + =int=: comiler will decide the size depending on context
   + =i8=: 8 bit signed integer, corresponding to =int8_t=
   + =i16=: 16 bit signed integer, corresponding to =int16_t=
   + =i32=: 32 bit signed integer, corresponding to =int32_t=
@@ -406,28 +39,30 @@ scheme as in rust.
 - *Other*
   + =bool=: A boolean true or false value
   + =nil=: the unit type, also known as NULL
-*** Thoughts
+** Thoughts                                                       :noexport:
 Maybe add f16 and f128 in the future?
-** Algebraic Data Types
-*** Specification
-More complex data types can be defined as Algrebraic data types. This is
-achieved with the =data= keyword.
+
+* Algebraic Data Types
+** Specification
+More complex data types can be defined by the user as Algrebraic data types. This is
+achieved with the =type= keyword.
 
 #+BEGIN_SRC C++
-data person {
+type person {
     name:string ,age:int |
     name:string, age:int, surname:string
 }
-data list {
-     nil | (load:int, tail:~list)
+
+type list {
+     nil | (load:int, tail:uptr<list>)
 }
 
-data foo {
+type foo {
 a:int,
 b:(string|float)
 }
 
-data foo {
+type foo {
 a:int,
 b:(string | (i:int, f:float))
 }
@@ -483,8 +118,8 @@ expand the =list(1, 2, 3, 4, 5)= to =list(1, list(2, list(3, list(4, list(5, nil
 Same thing can work for more complex recursive data types such as a binary
 tree. Look below for an example.
 #+BEGIN_SRC C++
-data binary_tree {
-nil | load:int, left:~binary_tree, right:~binary_tree
+type binary_tree {
+nil | load:int, left:uptr<binary_tree>, right:uptr<binary_tree>
 }
 
 a:binary_tree = nil
@@ -498,7 +133,9 @@ c:binary_tree = binary_tree(
 #+END_SRC
 
 From both the binary tree and the list example we can see that Refu tries
-to interpret a pointer to an object as =nil= if not existing.
+to interpret a pointer to an object as =nil= if not existing. In addition since
+the argument is known to be a pointer there is no need for the =make_ptr= type
+of functions.
 
 An algebraic data type can be considered as the equivalent of a
 tagged union type in C. Refu also supports anonymous ADTs. That means,
@@ -507,7 +144,7 @@ For example, a function's argument can be an anonymous ADT.
 
 #+NAME: Example 1
 #+BEGIN_SRC C++
-fn print_me(a:(string|b:int, c:int))
+fn print_me(a:(string | b:int, c:int))
 {
     //do some initialization stuff
     ...
@@ -553,7 +190,8 @@ way functions are defined in haskell. It is just syntactic sugar for
 achieving the same thing as in example 1. Example 3 is just an extended
 version of example 2 in which each branch of the match has many statements
 to execute.
-*** Recursive ADTs considerations
+
+** Recursive ADTs considerations
 Recursive data types such as the list or the binary_tree presented above
 can be quite complicated but when the compiler takes mutability into account
 many optimizations can be performed especially for a very simple data structure
@@ -561,8 +199,8 @@ with only one link like the list.
 
 #+BEGIN_SRC C++
 {
-    a:list = list(1, 2, 3, 4)// this is an immutable list
-    b:mut ~list = list(1, 2, 3, 4)//mutable list on the heap
+    const a:list = list(1, 2, 3, 4)// this is an immutable list
+    b:uptr<list> = list(1, 2, 3, 4)//mutable list on the heap
 }
 #+END_SRC
 
@@ -611,7 +249,7 @@ optimization would work only in some cases. In other cases where the
 tree is not balanced and there are many leaves it would make no sense to 
 try and so such a thing. This is thought in progress.
 
-*** Thoughts
+** Thoughts                                                       :noexport:
 Everything should be a type defined on top of other types. This should
 mimick haskell but I would like to find a nice syntax for it. I really
 like the short explanation of [[http://blog.lab49.com/archives/3011][this]] blog post and could go with similar
@@ -635,11 +273,11 @@ in Rust.
 
 Another very interesting article about types of data is [[http://tel.github.io/2014/07/23/types_of_data/][here]]. A more complete guide to 
 the algebra of the algebraic data types is here. ([[http://chris-taylor.github.io/blog/2013/02/10/the-algebra-of-algebraic-data-types/][Part 1]], [[http://chris-taylor.github.io/blog/2013/02/11/the-algebra-of-algebraic-data-types-part-ii/][Part2]], [[http://chris-taylor.github.io/blog/2013/02/13/the-algebra-of-algebraic-data-types-part-iii/][Part 3]])
-*** Implementation considerations
+** Implementation considerations                                  :noexport:
 This ADT declaration for a list in refu (data list = 1 + int*list)
 #+BEGIN_SRC C++
-data list{
-    nil | a:int, next:~list
+type list{
+    nil | a:int, next:uptr<list>
 }
 #+END_SRC
 
@@ -720,28 +358,88 @@ int len(list *l)
 }
 #+END_SRC
 
-** Memory Model
-*** Specification
-The memory model of Refu is very similar to that of the Rust programming
-language. All non-pointer objects are allocated on the stack and are freed
-when they go out of scope. This is much like most other languages out there.
+* Array types
+** Specification
+Array types are like simple C arrays that are aware of their own size so as to
+make sure there is no out of bounds access. An array is simply a contiguous 
+block of memory containing values of the same type.
+#+BEGIN_SRC C++
+array_of_ints:int[20]
+array_of_strings:string[20]
+a:int = array_of_ints[5]
+b = array_of_ints[5] // type deduction
+c:int = array_of_ints[22] //compile error
+#+END_SRC
+
+Dynamic size arrays can also be instantiated with the built-in =make_arr(type, elements_number)=
+function. An array's size in elements can be queried by =array.size=.
+
+#+BEGIN_SRC C++
+fn foo(b:ref<u8[]>) {
+    b[3] = 16;
+}
+
+buffer:u8[] = make_arr(u8, 10)
+foo(buffer)
+printf("%d", buffer.size); // should print 10
+printf("%d", buffer[3]); // should print 16
+#+END_SRC
+
+Array types are also closely related to the way the memory model of the
+language works and to how a buffer can be initialized.
+
+#+BEGIN_SRC C++
+type parser {
+    byte_size:int,
+    string_size:int,
+    buffer:byte[],
+    string_buffer:string[],
+}
+
+instance std::allocator<parser> {
+        fn(self:parser, a:int, s:int)
+        {
+           self.byte_size = a;
+           self.string_size = s;
+           self.buffer = make_arr(byte, self.byte_size)
+           self.string_buffer = make_arr(string, self.string_size)
+        }
+}
+// later they can both be accessed like normal arrays
+p = parser(25, 10)
+...
+...
+character = p.buffer[20]
+a_string = p.string_buffer[2] //the size is checked in runtime and if there is an out of bounds access attempt an error is raised
+#+END_SRC
+
+Those buffers will be freed when the containing struct gets freed.
+
+** Thoughts                                                       :noexport:
+Thinking if the language should have arrays, maybe some form of
+lists e.t.c. A nice analysis can be seen [[http://pcwalton.github.io/blog/2012/12/28/a-tour-of-vectors/][here]]
+
+* Memory Model
+** Specification
+The memory model of Refu is very similar to that of C++11. All non-pointer objects
+ are allocated on the stack and are freed when they go out of scope.
 For example:
 #+BEGIN_SRC C++
 {
     a:int
     s:string
-} //memory for both will be released here
+} //neither a nor s will be accesible after here
 #+END_SRC
 
 To allocate memory in the heap a pointer type is used. If a pointer type gets
 declared in a scope it has to be initialized. This way we can avoid dangling
 pointers.
 
-**** Unique pointers
-A unique pointer, just like in Rust is represented by the =~= symbol.
+*** Unique pointers
+A unique pointer, is a special generic type represented by =uptr<T>=
 For example
 #+BEGIN_SRC C++
-data person {
+type person {
     name:string,
     age:int
 }
@@ -749,33 +447,38 @@ data person {
 fn main()
 {
     a:person = person("jerry", 22)
-    b:~person = person("john", 15)
-    c:~person = b
+    b:uptr<person> = make_uptr(person("john", 15))
+    c = make_uptr(person("james", 31))
+    d = b
     // from here and on b can't be used
 }
 #+END_SRC
 
 A unique pointer is also known as an /owned pointer/. What this means is
 that the pointer is owned by the scope it is in. As an example at the above
-code =b= is initialized and acquires ownership of John. Then =c= takes
+code =b= is initialized and acquires ownership of John. Then =d= takes
 ownership of john by the assignment.
 
 Any use of b afterwards would be invalid and would raise a compiler error.
+Another thing to note is that the fact that a variable is a pointer type can be
+automatically deduced as is the case above with =c=. The way =b= is declared is kind of
+an overkills to show this point.
 
 An owned pointer can also appear inside a data definition. If that happens
 then that means that objects of the data type own the object to which they
 contain an owned pointer. 
+
 #+BEGIN_SRC C++
 data file_index {
-    nil | index:~something
+    nil | index:uptr<something>
 }
 data person {
     name:string,
     age:int,
-    index:~file_index
+    index:uptr<file_index>
 }
 
-fn set_something(p:&person, i:~file_index)
+fn set_something(p:&person, i:uptr<file_index>)
 {
     p.index = file_index
 }
@@ -784,53 +487,41 @@ fn main()
 {
     i:file_index = something(...)
     a:person = person("jerry", 23, nil)
-    b:~person = person("tom", 52, nil)
     
-    set_something(b, &i);
+    set_something(&a, &i);
     //from here and on i is owned by b and can't be assigned to anything
     
-    c:~person = b
-    //from here and on b can't be accessed
+    b:uptr<person> = a
+    //from here and on a can't be accessed
     d:person = a //illegal!
 }
 #+END_SRC
 
 Noteworthy from above is how we can denote that a pointer can be pointing
-to a speciall value that means empty as we can see from the definition of
+to a special value that means empty as we can see from the definition of
 the =file_index= object.
 
-Another thing to note is the assignment of the object owned by =b= to =c=.
+Another thing to note is the assignment of the object owned by =a= to =b=.
 Since they are both owned pointers of an object the assignment operation
 simply moves the ownership of the pointer and as such =b= can't be accessed
 anymore.
+*** Shared pointers
+A shared pointer is a reference counted pointer and is designated by =sptr<T>=.
+//TODO
+*** Raw pointers
+A raw pointer is a plain old C type of pointer to some memory location. It is 
+denoted by =ptr<T>=
+*** References
+//TODO
 
-Finally an interesting thing to note about data structures that are owners
-of data is that they can't simply be assigned. The person in the above example
-is one such data structure. By attempting to assign =a= to =d= which would be
-a copy operation we are performing an illegal operation since that would also
-create a second instance of the owned pointer inside ~a:person~.
-
-
-**** Shared pointers
-Probably should be only in the std::lib and should offer different management
-strategy, like garbage collection or reference counting.
-
-**** References
-
-
-*** Thoughts
-What about shared and weak pointers? Check all C++ 11 pointer types and
-think of equivalents. Also think about mutability. Should everything be
-immutable by default? And make them mutable with a keyword or other
-syntactic construct or should it be the other way around?
-
+** Thoughts                                                       :noexport:
 - *Pointer Types*
 Here is [[http://static.rust-lang.org/doc/master/rust.html#pointer-types][rust's pointer types page]] and a nice [[http://pcwalton.github.io/blog/2013/03/18/an-overview-of-memory-management-in-rust/][blog post]].
 - *Shared pointers*
    [[http://pcwalton.github.io/blog/2013/06/02/removing-garbage-collection-from-the-rust-language/][Why]] shared pointers are removed from Rust core language and moved to std lib
 
-** Functions
-*** Specification
+* Functions
+** Specification
 Functions in Refu are declared just like in the Rust language. The
 keyword =fn= followed by the name of the function, the arguments and
 finally by an arrow pointing to the return value.  If there is no return
@@ -854,100 +545,56 @@ need no return value if it's compact enough and has all its
 functionality under a =match=, =if= or =for= expression. For example:
 
 #+BEGIN_SRC C++
-fn find_length(a:~list)->int
-(nil) => 0
-(_, tail) => 1 + find_length(tail)
-
 fn int_inside_range(x:int, from:int, to:int) -> bool
 {
     if (x >= from && x <= to) { true} else { false}
 }
 #+END_SRC
-** Array types
-*** Specification
-Array types are like simple C arrays that are aware of their own size so as to
-make sure there is no out of bounds access. An array is simply a contiguous 
-block of memory containing values of the same type.
+
+In the absense of a return value the function's last expression statement
+value is interpreted as the return value. For example the following function's 
+return value is determined by a + 1
+
 #+BEGIN_SRC C++
-array_of_ints:int[20]
-array_of_strings:string[20]
-a:int = array_of_ints[5]
-b:int = array_of_ints[22] //run-time error
+fn do_something(a:int) -> int
+{
+    a = a * 2
+    if (a > 10) {
+       a - 5
+    } else {
+       a - 1
+    }
+    a + 1
+}
 #+END_SRC
 
-Dynamic size arrays can also be instantiated with the built-in =alloc()=
-function. An array's size in elements can be queried by =array.size=.
-
+Moreover a function can also completely omit a body block if it has a match expression on its arguments like below:
 #+BEGIN_SRC C++
-fn foo(b:&u8[]) {
-    buffer1:u8[] = b;
-}
-
-buffer:u8[] = alloc(10)
-foo(buffer)
-printf("%d", buffer.size); // should print 10
+fn find_length(a:~list)->int
+(nil) => 0
+(_, tail) => 1 + find_length(tail)
 #+END_SRC
-
-Array types are also closely related to the way the memory model of the
-language works and to how a buffer can be initialized.
-
-#+BEGIN_SRC C++
-struct parser {
-    something:int
-    buffer:~byte
-    string_buffer:~string
-}
-parser_alloc implof std::allocator for parser {
-        fn(self, a:int)
-        {
-           self.something = a
-           self.buffer = balloc(NUMBER_OF_BYTES_TO_MALLOC)
-           self.string_buffer = balloc(NUMBER_OF_STRINGS_TO_MALLOC)
-        }
-}
-// later they can both be accessed like normal arrays
-p:parser
-...
-...
-character = p.buffer[20]
-a_string = p.string_buffer[2] //the size is checked in runtime and if there is an out of bounds access attempt an error is raised
-#+END_SRC
-
-Note that even though the notation of the buffers is using (~) just like
-all the other unique pointers, memory not only for one string or one byte
-is allocated but since the built in balloc (buffer_alloc) function is
-used, they are pointers to buffer arrays. Also note that at some point
-the buffers can be reallocated with brealloc.
-brealloc(p.buffer, 100)
-
-Those buffers will be freed when the containing struct gets freed.
-
-*** Thoughts
-Thinking if the language should have arrays, maybe some form of
-lists e.t.c. A nice analysis can be seen [[http://pcwalton.github.io/blog/2012/12/28/a-tour-of-vectors/][here]]
-** Generics
-*** Specification
-Refu supports generics, which allow a user to define a generic data type
-and then use it with different concrete types, just like in C++ templates.
-For example:
+* Type Parameters
+** Specification
+Refu supports type parameters, which syntactically look like generics of some other programming languages. Their use will
+be seen heavily in the use of typeclass below but first let's see the syntax.
 
 #+BEGIN_SRC C++
-data list<type T>{
-     Nil | payload:T , tail:~list
+type list<type T> {
+     nil | payload:T , tail:uptr<list>
 }
 ..
 ..
 
 a:list<int> = (5, 6, 7, 8)
-//the above would be a shortcut for cons(Nil, cons(5, cons(6, cons(7, cons(8, Nil) ) ) ) )
 #+END_SRC
 
 This would define a generic ADT list, and later the user declares a list
 of ints and populates it. Same thing can be done with an ADT binary tree.
 
 #+BEGIN_SRC C++
-data binary_tree <type T> {
-    Nil | payload:T , left_branch:~binary_tree, right_branch:~binary_tree
+type binary_tree <type T> {
+    Nil | payload:T , left_branch:uptr<binary_tree>, right_branch:uptr<binary_tree>
 }
 ...
 ...
@@ -959,99 +606,566 @@ data binary_tree <type T> {
       0.01 0.2  1.5 3.3
 */
 
-a:binary_tree<double> = ( 1.0, (0.1, (0.01), (0.2))),  (2.0, (1.5, 3.3)))
+a:binary_tree<double> = ( 1.0, (0.1, (0.01), (0.2)),  (2.0, (1.5, 3.3)))
 a:binary_tree<double> = (1.0, cons(0.1, cons(0.01, Nil), cons(0.2, Nil) ),  cons(2.0, cons(1.5, Nil), cons(3.3, Nil)))
 #+END_SRC
 
-Generics can also apply to structures and functions like we can see below.
-Also we can have more than one generic type at a given time.
+Type paramerers can. Type parameters can be of either a concrete type as designated by =type=
+or by a type of a type also known as a =kind=. We will read more about kinds in the corresponding section.
+
+* Kinds
+** Specification
+Kinds are like the types of types. For example =type= is a concrete type while =derivative= is a kind defined as:
 
 #+BEGIN_SRC C++
-struct person<type T, type Y> {
-    budget: T
-    name: string
-    places_visited:list<Y>
-}
-
-fn populate_budget<type T, type Y>(a:person<T,Y>, budget:T)
-{
-   person.budget = budget
+kind derivative {
+   type -> type
 }
 #+END_SRC
 
-** Pattern matching
-*** Specification
-Algebraic data types go hand in hand with the ability to use pattern
-matching on those types. This is offered by the match expression keyword
-in refu.
+which means that a type that is derived from another type is a derivative type.
 
-Pattern matching is the elimination construct for algebraic data types.
-That means that a pattern matching expression, expresses how one should
-consume a partciular ADT. For example look below.
+For example our good old friend the list as seen below.
+#+BEGIN_SRC C++
+type list <type T>{
+    nil | (load:int, tail:uptr<T>)
+}
+#+END_SRC
+It's a type of kind derived because it takes a concrete type and produces another concrete type.
+
+For a more complicated example of a kind imagine the following:
+#+BEGIN_SRC C++
+kind complicated {
+   (type, derivative) -> type
+}
+#+END_SRC
+This new complicated kind takes a concrete type and a type of derivative kind as defined above
+and produces a concrete type. But how would an example of a type of this kind look? Look below:
+#+BEGIN_SRC C++
+type list_with_size <type T, derivative Y>{
+    a:Y<T>, b:int
+}
+
+a:const list<int> = list(1, 2, 3)
+foo:list_with_size<int, list> = list_with_size(a, 3)
+#+END_SRC
+
+If for whatever reason you may have needed to represent a list with its size as an extra type over an 
+already defined list you could do it as shown above. Notice the usage of =derivative= kind as defined in
+the preceding example.
+
+* Typeclasses
+** Specification
+Refu relies heavily on the use of typeclasses. They are an important
+way to guarantee behaviour about objects of a given type. There are quite a few builtin
+typeclasses in the standard library. The concept of a typeclass is similar to that of an
+interface in some other languages.
+*** Simple example
+Here is one example which defines the operation for the adding operator. This allows an object to define how it
+shall be added. One can notice the keyword =self= which defines the object
+the function will be called for and also the generic syntax of =<type T>=
+since we can't know the type of the object we are adding.
 
 #+BEGIN_SRC C++
-data list {
-nil | member:int,rest:~list
+class addition<type T> {
+   fn(self:T, other:T) -> T
 }
-a:list
-match a {
-     (nil) => print("empty list")
-     (i, _) => print("Head of the list is %d", i)
+
+type vector {
+    x:int, y:int, z:int
+}
+
+//A type would declare that it derives the typeclass
+instance addition<vector> {
+   fn(self:vector, other:vector) -> vector
+   {
+       ret:vector
+       ret.x = self.x + other.x
+       ret.y = self.y + other.y
+       ret.z = self.z + other.z
+       return ret
+   }
 }
 #+END_SRC
 
-Match expressions can also be recursive. A =match()= inside a match expression
-renders the whole match recursive. For example look at the matching below
-which calculates the length of a list.
+So what the above code declares is that there is some type called =vector=. That type is an instance
+of the addition typeclass with the given implementation. The addition typeclass like some other special
+typeclasses allow for special operations. In particular it allows for overloading operator =+=. So adding
+two vectors would in essence call the instance of the typeclass.
+*** Advanced example
+Following you will find a more complicated example of the use of typeclasses.
+#+BEGIN_SRC c++
+type uptr<type T> {
+    nil | p:*T // using C notation for the pointer here
+}
 
-#+BEGIN_SRC C++
-fn find_length(a:~list)->int
-{
-    return match a {
-        (nil) => 0
-        (_, tail) => 1 + match(tail)
+class pointers <derivative pointer_kind, type T> {
+    fn assign (self:pointer_kind<T>, other:pointer_kind<T>)
+    fn addressof (self:pointer_kind<T>) -> ref<T>
+    fn dereference (self:pointer_kind<T>) -> T
+}
+#+END_SRC
+
+In the above code example we create a class for pointer types. All pointers need two things to be defined
+correctly, the kind of pointer (shared, unique, raw) and the type of the object that the pointer will point to.
+
+Let's look below at the example of one such type, the unique pointer, which is an instance of this typeclass.
+#+BEGIN_SRC c++
+instance pointers<uptr, type T> {
+    fn assign (self:uptr<T>, other:uptr<T>)
+    {
+        // implementation
+    }
+
+    fn addressof (self:uptr<T>) -> ref<T>
+    {
+        // implementation
+    }
+
+    fn dereference (self:uptr<T>) -> T
+    {
+        // implementation
     }
 }
 #+END_SRC
-For completeness sake it should be noted that the above example can
-be written in a simpler way, having the function block omitted:
 
-#+BEGIN_SRC C++
-fn find_length(a:c:~list)->int
-(nil) => 0(_, tail) => 1 + find_length(tail)
+This is how you would declare an instance of a typeclass. The above code denotes that uptrs can be used with all
+of the functions of the pointers typeclass, and provides their implementation. This requires though that somewhere above
+the declaration of the =uptr= type should exist.
+
+Another notation that would combine the type instantiation along with the instance of the typeclass can be seen below.
+#+BEGIN_SRC c++
+type uptr<type T> {
+    nil | p:*T // using C notation for the pointer here
+} derives pointers<uptr, T> {
+    fn assign (self:uptr<T>, other:uptr<T>)
+    {
+        // implementation
+    }
+
+    fn addressof (self:uptr<T>) -> ref<T>
+    {
+        // implementation
+    }
+
+    fn dereference (self:uptr<T>) -> T
+    {
+        // implementation
+    }
+}
 #+END_SRC
+*** Using same function in multiple instances of different typeclasses
+Imagine for a moment that we would also want to overload the =&= operator to allow for taking the address of a pointer.
+That means we would want the same function to be used in the implementation of different typeclasses.
+In that case we would need to have one small change in the above code.
 
-In a =match=, all possible value combinations must be exhausted. =_= means
-any value, =nil= means no value and anything else is interpreted as an
-identifier to recognize that particular positional argument. Another way
-to match something would be depending on the type. For example.
-
-#+BEGIN_SRC C++
-data list<T> {
-nil | (load:T, tail:~list)
+#+BEGIN_SRC c++
+class ampersand<type T> {
+    fn overload(self:T) -> Any
 }
 
-a:list<int>
-list_type:string = match a {
-   (nil) => "empty list"
-   (int, _) => "list of ints"
-   _ => "other kind of list"
+fn addressof_pointers<derivative pointer_kind, type T>(self:pointer_kind<T>) -> ref<T>
+{
+    // implementation of getting the address of the pointer
+}
+
+instance pointers<uptr, type T> {
+    fn assign (self:uptr<T>, other:uptr<T>)
+    {
+        // implementation
+    }
+
+    addressof = addressof_pointers<uptr, T>
+
+    fn dereference (self:uptr<T>) -> T
+    {
+        // implementation
+    }
+}
+
+instance ampersand<uptr<T>> {
+    overload = addressof_pointers<uptr, T>
 }
 #+END_SRC
 
-From the above, one can notice the following. A match expression is just
-that, an expression and can as easily be assigned to something. Also a
-match can be on some type with the built-in keyword =typeof=. Finally it
-is a compile error to not exhaust all possible matches, so the _ at the
-end matches all other cases.
+As can be seen above we can simply point to an external function as the implementation of a 
+function for a typeclass instance.
 
-*** Thoughts
-As very nicely stated on [[http://stackoverflow.com/a/2226292/110395][this SO answer]], pattern matching is the elimination
-construct for algebraic data types. That means that a pattern matching
-expression, expresses how one should consume a partciular ADT.
-** If expressions
-*** Specification
-In Refu an if can act either as an expression or like a statement
+*** Typeclass Inheritance
+The use of typeclasses is extended by the possibility of inheritance between typeclasses.
+#+BEGIN_SRC C++
+class equality<type T> {
+    fn equals(self:T, other:T) -> bool
+    fn nequals(self:T, other:T) -> bool
+}
+
+class comparison<type T> extends equality{
+    fn greater_than(self:T, other:T) -> bool
+    fn less_than(self:T, other:T) -> bool
+}
+
+class super_comparison<type T> extends comparison{
+    fn gteq(self:T, other:T) -> bool
+    fn lteq(self:T, other:T) -> bool
+}
+
+//multiple inheritance
+class reader <type T> {
+   fn read(a:T)
+}
+
+class writer <type T> {
+   fn write(a:T)
+}
+
+class io <type T> extends (reader, writer) {
+    // can be empty or can have additional functions to implement
+}
+#+END_SRC
+
+The typeclass equality above allows for types that instantiate it to use its
+2 equality function, while the comparison typeclass on the other hand allows for
+greater and less than comparison in addition to the equality functions. Additionally 
+multiple levels of inheritance can be valid as we can see from the =super_comparison=
+typeclass and also multiple inheritance as the =io= typeclass shows.
+
+*** Choosing typeclass instancess for a specific type
+An important thing about typeclasses is that types can derive EACH
+and every single interface in a different place in the code.
+Rationale: Picture you buy the code from someone and you can't change the
+implementation and have only the headers and you need to derive some
+extra typeclasses without changing the original code.
+
+Another additional concern is on cases where you may want to have a
+different instantition of a typeclass changed and swapped even in
+runtime. Imagine that there is this typeclass called 'Ordering'
+which denotes how the members of a type should be ordered.
+Then we have two instances of this typeclass, both implemented by a
+type, say a list. One implements an ascending order ordering and the
+other a descending order ordering. There should be a way to choose in
+runtime which of the two implementations the ordering would use.
+
+So let's look at the following example, which will not compile.
+#+BEGIN_SRC C++
+instance ordering ord_ascend<vector> {
+    fn(self)
+    {
+        ...
+    }
+}
+
+instance ordering ord_descend<vector>{
+    fn(self)
+    {
+        ...
+    }
+}
+#+END_SRC
+Here we can see an additional feature. Instances of a typeclass can optionally have
+an extra identifier if we implement more than one instance of a typeclass for a type.
+But why will this not compile? Well simply because 2 different instances
+are declared for a type without specifying one as the default implementation for all objects of type vector.
+#+BEGIN_SRC C++
+instance ordering ord_ascend<vector> = default{
+    fn(self)
+    {
+        ...
+    }
+}
+
+instance ordering ord_descend<vector>{
+    fn(self)
+    {
+        ...
+    }
+}
+#+END_SRC
+
+With the above code we can declare the =ord_ascend= instance as
+default and as such all vector types unless otherwise specified will have
+this implementation for the ordering typeclass
+
+And finally below we can see how to change the choice of typeclass instance
+in runtime. (TODO)
+#+BEGIN_SRC C++
+a:list // ord_ascend
+b:list<ordering: ord_ascend> // ord_ascend
+c:list<ordering: ord_descend> //ord_descend
+#+END_SRC
+
+** Thoughts                                                       :noexport:
+Links for useful reading:
++ [[http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.99.8567&rep=rep1&type=pdf][Software Extension and Integration with Type Classes]]
++ [[http://stackoverflow.com/a/6948534/110395][SO answer on difference between typeclasses and interfaces]]
++ [[http://www.artima.com/weblogs/viewpost.jsp?thread=270195][Type parameters versus generics in Scala]]
+* Error Handling
+** Specification
+Error handling is a very serious topic. Refu attempts to make it easy for
+the developer to handle all erroneous conditions with ease without
+cluttering the implementation of functions. We aim to make it easy to
+handle errors and we assume that the execution path in case of an error
+is not performance critical since errors are and should always be
+extraneous situations.
+
+There are multiple ways to actually handle errors in a function and we
+will present them here.
+*** Exceptions
+  Exceptions can be raised at any point during the code and the stack
+  will unwind, calling the deallocators of all objects it encounters
+  until a catch is hit.
+
+  #+BEGIN_SRC C++
+  fn calculate_square_root(a:double) -> double
+  {
+      if (a < 0.0) {
+           raise // this would raise a generic anonymous exception
+           raise negative_double_in_sqrt("Omg noez") // raise a specific exception
+      }
+      return a*a
+   }
+
+
+   ....
+   ....
+
+   try {
+       ...
+       calculate_square_root(-1.0)
+
+   } catch (e){
+       negative_double_in_sqrt =>  do something
+       print(e.str)
+       _ => {
+           print(e.error_str) //the message of the raise
+           print(e.location_str) //the location of the raise (function, line_no, file)
+       }
+}
+#+END_SRC
+
+Exceptions can also be derive an exception typeclass. There are some
+built-in exception typeclasses defined in the standard library
+like std::exceptions::memory, std::exceptions::io and
+std::exceptions::numeric. To define an exception as a member of an
+exception class the following syntax is used:
+
+#+BEGIN_SRC c++
+type negative_in_sqrt {
+    msg:string
+} derives std::exception<negative_in_sqrt>
+
+
+...
+// then you can throw this type of exception anywhere in the code by
+throw negative_in_sqrt("this is an error message")
+
+#+END_SRC
+*** Design By Contract
+A function can have a contract with its caller. Such contracts are made up
+of calling preconditions and calling postconditions. If possible these
+checks are performed in compile time, and compiled away for the runtime.
+If not they raise an exception in runtime. The user has the option to
+completely disable them for a release build.
+(Have to think if this should actually happen)
+#+BEGIN_SRC C++
+fn calculate_square_root(a:double) -> double
+:precond(a >= 0.0)
+:postcond(result >= 0.0) //not needed, but just here as an example
+{
+    return a*a;
+}
+#+END_SRC
+** Thoughts                                                       :noexport:
++ (Nice info about [[http://en.wikibooks.org/wiki/Computer_Programming/Error_handling][error handling]] in general and [[http://en.wikibooks.org/wiki/Computer_Programming/Design_by_Contract][Design by contract]] )
++ The way [[http://dlang.org/errors.html][D language handles errors]]
+
+* Modules
+** Specification
+Programs and libraries written in Refu are divided in modules. A module
+can be imported from other parts of code as is, like:
+#+BEGIN_SRC C++
+import geometry
+#+END_SRC
+
+Certain functions, structs or data from modules can also be imported
+alone so that the global namespace is not polluted.
+#+BEGIN_SRC C++
+import vector3d, model from geometry
+#+END_SRC
+
+Additionally, imported objects can be given an alias so as to avoid
+name conflicts
+
+#+BEGIN_SRC C++
+import vector3d, model from geometry as vector_imp, model_imp
+#+END_SRC
+
+
+To encapsulate code into a module one would need to enclose it in
+a module block like so:
+
+#+BEGIN_SRC C++
+module geometry {
+...
+...
+...
+}
+#+END_SRC
+
+Modules encompass functionality. In order to allow separation between
+private and public module objects there are 2 different ways to arrange
+modules. One is as shown above, having all of the module related code
+encompassed in a identifier module { ... } block. In that case everything
+would be private in the module by default. To mark something as public and
+exportable to other modules then you would have to prepend it with the
+=export= keyword.
+
+#+BEGIN_SRC C++
+module geometry{
+
+    struct private_foo{
+    ...
+    }
+
+    //model will be exported since it has the export attribute
+    export struct model{
+    }
+
+    //this function will be visible from outside the module
+    export fn some_public_function(..) ->foo
+    {
+    }
+
+    //this function will not be visible from outside the module
+    fn private_function(..) -> foo
+    {
+    }
+
+}//end of module
+#+END_SRC
+
+Another way to organize modules and by far the preferred way is to
+separate a module's signature from its implementation. This allows for
+separation of interface from implementation, module typechecking, cleaner
+code look and most importantly multiple implementation of module code for
+different systems.
+
+As an example consider an IO module that implements I/O functionality for
+Linux, Windows, ARM or even javascript!
+
+#+BEGIN_SRC C++
+signature io {
+    type file; /* definition is in module implementation */
+
+    fn open(name:ref<string>) -> file
+    fn read(f:ref<file>) -> bytes
+    fn write(f:ref<file>, b:bytes) -> int
+}
+#+END_SRC
+
+and in two other separate files, the module implementation could be like
+this for a different windows and linux implementation.
+#+BEGIN_SRC C++
+linux_io implof io {
+    type file {
+        ...
+    }
+
+    fn open(name:ref<string>) -> file
+    {
+        ...
+    }
+    fn read(f:ref<file>) -> ~bytes
+    {
+        ...
+    }
+    fn write(f:ref<file>, b:bytes) -> int
+    {
+        ...
+    }
+}
+#+END_SRC
+
+#+BEGIN_SRC C++
+windows_io implof io {
+    type file {
+        ...
+    }
+
+    fn open(name:ref<string>) -> file
+    {
+        ...
+    }
+    fn read(f:ref<file>) -> ~bytes
+    {
+        ...
+    }
+    fn write(f:ref<file>, b:bytes) -> int
+    {
+        ...
+    }
+}
+#+END_SRC
+Anything not in the signature of a module is going to be private to a
+particular module implementation.
+
+Modules can also accept arguments. Irrespective of the way you declare a
+module it can always accept arguments.
+- *Signature*
+   #+BEGIN_SRC C++
+   signature test_module(g:geometry, buffer_size:int = 512) {
+
+       fn do_something()
+       fn do_something_with_geometry(t:g::triangle)
+       ...
+
+   }
+
+   test implof test_module(g:geometry, buffer_size:int) {
+       import g //import the module we passed as argument
+
+       fn do_something()
+       {
+           allocate_buffer(buffer_size)
+       }
+
+       fn do_something_with_geometry(t:g::triangle) -> f32
+       {
+           return g::calculate_area_of_triangle(t)
+       }
+
+   }
+   #+END_SRC
+
+- *Without Signature*
+
+  #+BEGIN_SRC C++
+  module test_module(g:geometry, buffer_size:int = 512) {
+      import g //import the module we passed as argument
+
+       export do_something()
+       {
+           allocate_buffer(buffer_size)
+       }
+
+       export do_something_with_geometry(t:g::triangle) -> f32
+       {
+           return g::calculate_area_of_triangle(t)
+       }
+   }
+  #+END_SRC
+
+In order to import this from some other place in the code you would do
+something like the following:
+#+BEGIN_SRC C++
+import some_module(my_geometry, 1024)
+#+END_SRC
+
+** Thoughts                                                       :noexport:
+Where should the modules be searched for? How should linking other libraries
+work?
+* If expressions
+** Specification
+In Refu an =if= can act either as an expression or like a statement
 depending on the context. That means, that you can assign an if
 expression as values to variables. The general if syntax is as follows:
 
@@ -1072,7 +1186,7 @@ is used as an expression. Depending on the value of =i=, we assign a
 specific value to =a=.
 
 #+BEGIN_SRC C++
-a:m:int
+a:int
 a = if i > 10 {
         20
 } elif i < 0 {
@@ -1082,43 +1196,91 @@ a = if i > 10 {
 }
 #+END_SRC
 
-A more advanced usage of an if expression can also be seen below. A data
-type of two void functions with no arguments is defined. Then a variable
-of that type is declared.
-
-#+BEGIN_SRC C++
-data two_functions {
-   fn(), fn()
-}
-
-functions_caller:two_functions
-funcions_caller = if i  > 10 {
-         do_something_good()
-         do_something_good2()
-} elif i < 0 {
-        do_something_mediocre()
-        do_something_mediocre2()
-} else {
-        do_something_bad()
-        do_something_bad2()
-}
-...
-...
-//later f can actually be called somewhere
-functions_caller
-#+END_SRC
-
 Unlike some other languages the curly braces can't be omitted in any
 branch of the if. If the condition of an if branch is complex enough then
 it should be enclosed in parentheses like so:
 
 #+BEGIN_SRC C++
-if ( (i > 10 && i <20) || (x > 30 && x < 40)) {
+if ((i > 10 && i <20) || (x > 30 && x < 40)) {
       do_something()
 }
 #+END_SRC
-** For expressions
-*** Specification
+
+* Pattern matching
+** Specification
+Algebraic data types go hand in hand with the ability to use pattern
+matching on those types. This is offered by the match expression keyword
+in refu.
+
+Pattern matching is the elimination construct for algebraic data types.
+That means that a pattern matching expression, expresses how one should
+consume a partciular ADT. For example look below.
+
+#+BEGIN_SRC C++
+type list {
+nil | load:int, tail:uptr<list>
+}
+
+a:list
+match a {
+     (nil) => print("empty list")
+     (i, _) => print("Head of the list is %d", i)
+}
+#+END_SRC
+
+Match expressions can also be recursive. A =match()= inside a match expression
+renders the whole match recursive. For example look at the matching below
+which calculates the length of a list.
+
+#+BEGIN_SRC C++
+fn find_length(a:ref<list>) -> int
+{
+    return match a {
+        (nil) => 0
+        (_, tail) => 1 + match(tail)
+    }
+}
+#+END_SRC
+For completeness sake it should be noted that the above example can
+be written in a simpler way, having the function block omitted:
+
+#+BEGIN_SRC C++
+fn find_length(a:ref<list>) -> int
+(nil) => 0
+(_, tail) => 1 + find_length(tail)
+#+END_SRC
+
+In a =match=, all possible value combinations must be exhausted. =_= means
+any value, =nil= means no value and anything else is interpreted as an
+identifier to recognize that particular positional argument. Another way
+to match something would be depending on the type. For example.
+
+#+BEGIN_SRC C++
+type list<T> {
+nil | (load:T, tail:uptr<list>)
+}
+
+a:list<int> = list<int>(1, 2, 3)
+list_type:string = match a {
+   (nil) => "empty list"
+   (type int, _) => "list of ints"
+   _ => "other kind of list"
+}
+#+END_SRC
+
+From the above, one can notice the following. A match expression is just
+that, an expression and can as easily be assigned to something. Also a
+match can be on some type with the built-in keyword =typeof=. Finally it
+is a compile error to not exhaust all possible matches, so the _ at the
+end matches all other cases.
+
+** Thoughts                                                       :noexport:
+As very nicely stated on [[http://stackoverflow.com/a/2226292/110395][this SO answer]], pattern matching is the elimination
+construct for algebraic data types. That means that a pattern matching
+expression, expresses how one should consume a partciular ADT.
+
+* For expressions
+** Specification
 The simplest way to iterate something in refu is by using a for
 expression. The syntax is simple. For a simple iteration of n times one
 can use the following.
@@ -1142,20 +1304,19 @@ for i in [0..2..10] {
 #+END_SRC
 
 For expressions are also heavily customizeable on a per type basis.
-By implementing the standard library's iterator interface you can define
-how the expression behave for a specific data type. For example:
+By deriving the standard library's iterator typeclass you can define
+how the expression behave for a specific type. For example:
 
 #+BEGIN_SRC C++
-data list {
-Nil |
-payload:int, tail:~list
+type list {
+    nil | payload:int, tail:uptr<list>
 }
 
-list_iter implof std::iterator for list {
-    fn(self)->list
+instance std::iterator<list> {
+    fn(self:list)->list
     {
         match(self) {
-         (Nil) => return Nil
+         (nil) => return Nil
          (val, tail) => return (val, tail)
         }
     }
@@ -1167,14 +1328,14 @@ for i in my_list {
 }
 #+END_SRC
 
-By defining the =list_iter= implementation of the iterator interface we
+By defining the =list_iter= instance of the iterator typeclass we
 just defined the way that lists can be iterated. Afterwards whenever a for
 expression is used on a list, the defined implementation is used.
-The iterator interface looks like this:
+The iterator typeclass looks like this:
 
 #+BEGIN_SRC C++
-interface iterator <T>{
-     fn(self:&self_type) -> (Nil | (T, ~self_type))
+class iterator<type T> {
+     fn(self:ref<T>) -> (nil | (Any, T))
 }
 #+END_SRC
 
@@ -1189,286 +1350,59 @@ they can also be assigned. For example an array can be assigned like this:
 
 #+BEGIN_SRC C++
 arr:int[3] = [5, 6, 7]
-another_arr:int[] = for i in arr { i + 3}
+another_arr:int[] = for i in arr { i + 3 }
 #+END_SRC
 
 Afterwards =another_arr= will contain [8, 9, 10]. Of course these
 expressions are checked at compile time for validity of type assignment.
 If the for block had something that is not an int, or if it had more
 statements then it would be a compile error. On the left hand of the
-assignment any identifier whose type would agree with (Nil | int, T) would
+assignment any identifier whose type would agree with =(Nil | int, T)= would
 be acceptable.
-** Mutability
-*** Specification
-All data are by default immutable in Refu. In order to specify mutability
-or not of a data type this is done in the type declaration. For example:
+* Mutability and Immutability
+** Specification
+All data are by default mutable in Refu. In order to specify mutability
+the =const= keyword is used. 
 
-#+BEGIN_SRC C++
-struct person {
-    age:int
-    name:string
+#+BEGIN_SRC c++
+type data_record {
+    index:int, name:string
+}
+
+fn just_read(record:const data_record)
+{
+    do_something_with_record_index(record.index)
 }
 #+END_SRC
 
-Would create an immutable person type. Once an instance of this type is
-initialized it would not be allowed to change.
-
-#+BEGIN_SRC C++
-fn change_a_person(p:&person)
-{
-    p.age = 1
-}
-steve:person = ("steve", 25)
-change_a_person(steve) /* not allowed*/
-#+END_SRC C++
-
-The above would not work since steve is declared as a mutable person. To
-overcome this problem we would need to do one of two things.
-
-#+NAME Method 1
-#+BEGIN_SRC C++
-mut struct person {
-    age:int
-    name:string
-}
-
-fn change_a_person(p:&person)
-{
-    p.age = 1
-}
-steve:person = ("steve", 25)
-change_a_person(steve)
-#+END_SRC
-In the above example we simply define a mutable type and as such the example
-works fine.
-
-But if on the other hand we wanted to keep the immutable person type we could
-simply modify the function to return a copy.
-#+NAME Method 2
-#+BEGIN_SRC C++
-fn change_a_person(p:&person) -> ~person
-{
-    res:person = (p.name, p.age)
-    return res;
-}
-#+END_SRC
-
-*** Thoughts
+By defining an object as immutable the compiler can reason about the logic
+of the program in a very different way and optimize things away. In addition
+it serves as a way to document functions and interfaces between modules to
+denote whethen some data can be modified or not.
+** Thoughts                                                       :noexport:
 The question of immutability is a very interesting one. There are many
 examples to be drawn from Scala. [[http://www.scala-lang.org/docu/files/collections-api/collections_12.html][Here]] is a list of mutable and immutable
 collections in scala.
 
 Also [[http://docs.scala-lang.org/overviews/collections/overview.html][here]] is a nice piece on the scala docs outlining main differences
 on usage of mutable and immutable collections.
-* Features to experiment with
-** Type system - Dependent types
-[[http://ejenk.com/blog/why-dependently-typed-programming-will-one-day-rock-your-world.html][Interesting blog post]]
-Read about: dependent types, currying
-
-The language's type system is a very controversial matter but one that does
-require a lot of thinking.
-
-There should be a way to allow for types of functions to be included into
-the type system so that we can accomodate higher order functions. A syntax
-I can imagine for it is like the following:
-#+BEGIN_SRC C++
-data my_type {
-a -> (b, c) -> d
-};
-#+END_SRC
-
-A function that could be of this type is the following:
+* Parallel Processing Framework / Parallel Routines
+** Specification
+In Refu many small lightweight threads can be spawned. They are called
+routines and can be created with the rt keyword.
+For example:
 
 #+BEGIN_SRC C++
-foo(a) {
-      .....
-  return function(b, c) {
-        return a + b + c;
-  }
+fn print_some_stuff()
+{
+   print("eleos")
+   print("lol")
 }
+//run print_some_stuff in another thread
+rt print_some_stuff
 #+END_SRC
 
-or in other notation
-#+BEGIN_SRC C++
-func foo (a:A)->(b:B, c:C) -> D {
-   return a + b +c;
-}
-#+END_SRC
+Routines can be communicated to via message passing. ...
+More thinking to go here ...TODO
+** Thoughts                                                       :noexport:
 
-
-(note: in Haskell, ML a function's arguments are separated by -> .. so the
-below as originally written by steffen was)
-#+BEGIN_SRC haskell
-x:string -> print_types(x) -> void
-#+END_SRC
-
-Stephen mentioned that with dependent types you can have functions that are
-all just executed in compile time since they are only used in type
-checking. This, he said can end up being quite a bit complicated.
-
-In which case print_types(x) would be a compile time function implemented
-like:
-
-As an example he said to think of the printf function.
-printf is of type:     x:string, print_types(x) -> void
-
-#+BEGIN_SRC C++
-print_types(x) {
-
-    match(x)
-             '%d' => int, print_types(rest(x))
-             '%s' => string,print_types(rest(x))
-              ....
-            else: print_types(rest(x))
-    }
-}
-#+END_SRC
-
-and running this compile time function to determine the type of
-=printf("eleos %s lol %d")= would give us
-=x:string, string, int, -> void=
-** Variadic generics
-When I delve more into how generics work in Refu then think if it would be
-possible and beneficial to introduce variadic generics, so that we have
-functions with variadic number of arguments of known types.
-C++11 can do it: http://stackoverflow.com/questions/10044449/a-function-with-variable-number-of-arguments-with-known-types-the-c11-way
-** Type inference
-When I delve more into how generics work in Refu then think if it would be possible and beneficial to introduce variadic generics, so that we have functions with variadic number of arguments of known types.
-C++11 can do it: http://stackoverflow.com/questions/10044449/a-function-with-variable-number-of-arguments-with-known-types-the-c11-way
-* Runtime implementation
-** Some thoughts
-As far as the runtime is concerned I believe I should have a memory
-allocation scheme for all of the recursive data structures. The way I have
-thought it up is having preallocated blocks of segments. Segment is not the
-right word to use for it but let's go with it for now. Must have
-preallocated blocks of segments of various sizes. Segment of
-2 bytes, 4 bytes, 8 bytes, 16 bytes e.t.c up to a maximum limit.
-Each segment should have the payload which would be anything ... as long as
-it fits the segment size and then at the end a pointer to the next segment
-which shall initially be null.
-
-All the recursive data structures should request and add segments from this
-memory region. This region should be managed by the runtime with a simple
-memory allocation algorithm. Each time that a node is to be added to a data
-structure then a segment from the region should be requested. Have to think
-what to do about structures which would exceed the size limit. I suppose
-fallback to malloc?
-
-In another note I believe I should have a configurable pool of worker
-threads in the runtime doing nothing unless the user requests
-parallelization in which case he would not have to bother himself with
-threading but simply with his algorithm and the work will be separated
- between the worker threads. More thoughts on this to come later.
-
-Functional language and imperative hybrid? Pattern matching is a killer
-feature! (But how heavy is its implementation?)
-Whether or not functional language constructs are added into the language,
-a form of pattern matching can be added since it seems to be quite useful.
-Investigate more. For example erlang style bit pattern matching?
-http://learnyousomeerlang.com/starting-out-for-real#bit-syntax
-
-For pattern matching (and I suppose general functional language programming implementations look at)
-http://research.microsoft.com/en-us/um/people/simonpj/papers/slpj-book-1987/
-** Memory allocators
-I have been thinking of having a kind of slab memory pool allocator. So to
-basically have different memory pools for different sizes of structures
-like so:
-#+BEGIN_SRC ditaa :file images/slab_memory_pool.png
-/--+       +--------------------+
-|2 | ----- | 2 byte memory pool | ----+
-+--/       +--------------------+     |
-/--+       +--------------------+     |
-|4 | ----- | 4 byte memory pool | ----+
-+--/       +--------------------+     |
-/--+       +--------------------+     |
-|8 | ----- | 8 byte memory pool | ----+
-+--/       +--------------------+     |
-                                      |
-            ......                    |
-/--+       +--------------------+     |
-|64 | ---- | 64 byte memory pool| ----+
-+--/       +--------------------+     |
-                                      |
-                             +----------------+
-                             | Chunk allocator|
-                             +----------------+
-#+END_SRC
-
-Another nice addition to this would be a named allocator that would be used
-by the language's runtime. What a named allocator means is that the runtime
-has a special memory pool for each of the structures/data objects created
-by the compiled program. This allows the user to optionally also collect
-statistic as to how many instances of a particular object have been
-initialized, how many freed e.t.c.
-
-#+BEGIN_SRC ditaa :file images/slab_memory_pool2.png
-                       /--+       +--------------------+
-                       |2 | ----- | 2 byte memory pool | ----+
-                       +--/       +--------------------+     |
-/------------------+   /--+       +--------------------+     |
-| person allocator |-- |4 | ----- | 4 byte memory pool | ----+
-+------------------/   +--/       +--------------------+     |
-                       /--+       +--------------------+     |
-                       |8 | ----- | 8 byte memory pool | ----+
-                       +--/       +--------------------+     |
-                                                             |
-                                   ......                    |
-/------------------+   /---+       +---------------------+   |
-| book   allocator |-- |64 | ----- | 64 byte memory pool | --+
-+------------------/   +---/       +---------------------+   |
-                                                             |
-                                                    +----------------+
-                                                    | Chunk allocator|
-                                                    +----------------+
-#+END_SRC
-
-The way that a free list can be kept is like below:
-
-#+BEGIN_SRC C++
-struct mem_meta {
-    mem_meta *next;
-    size_t sz;
-    uint8_t buf[]; //flexible array members
-};
-#+END_SRC
-
-So when you allocate a pointer from the memory pool you will allocate the
-whole mem_meta. and return the buf. When the user frees he would free the
-buffer and we at the implementation would take the mem_meta * with the
-container_of() macro and hene know the size and/or other meta data. With
-those data it would be possible to decide which pool to use for freeing
-(basically add it to the free list of that pool.
-
-From my talk with Stephen he mentioned some scheme that concurrent allocators
-like jmalloc use. There may be (gotta check for the details) a global slab
-allocator that allocates different sizes of elements from different memory
-pools from a global pool. then threads acquire this big pool with a mutex
-and allocate from there. When they free they send the elemnts to a free list,
-so that they can be reallcoated later without having to hold the global mutex.
-
-This is a nice scheme but a big disadvantage of it is that if one thread
-allocates and another thread frees, like it so often tends to happen,
-then there is a bottleneck in the global allocator since the thread-local
-free-lists are never used.
-* Notes / Thoughts / Resources
-** Haskel internal representation
-http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/HeapObjects
-http://stackoverflow.com/questions/15063115/internal-representation-of-haskell-lists
-http://stackoverflow.com/questions/3254758/memory-footprint-of-haskell-data-types
-** Coroutines and continutations
-General Continuation implementation:
-  http://c2.com/cgi/wiki?ContinuationImplementation
-
-Coroutine implementations in C:
-http://www.chiark.greenend.org.uk/~sgtatham/coroutines.html
-** Error handling thoughts
-http://programmers.stackexchange.com/questions/147059/the-modern-way-to-perform-error-handling
-** Algebraic Data types
-http://blog.lab49.com/archives/3011
-http://stackoverflow.com/questions/16770/haskells-algebraic-data-types
-
-Interestni questions about AlgDT and haskell in SO:
-http://stackoverflow.com/questions/9190352/abusing-the-algebra-of-algebraic-data-types-why-does-this-work
-** Tail call optimization
-I should try and make sure that many things that require recursion and
-deal with the ADTs strive for tail recursion and [[http://stackoverflow.com/questions/310974/what-is-tail-call-optimization][tail call optimization]]

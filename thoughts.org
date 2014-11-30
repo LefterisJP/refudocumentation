@@ -1,0 +1,216 @@
+This file simply contains some thoughts and notes regarding the language
+
+* Features to experiment with
+** Type system - Dependent types
+[[http://ejenk.com/blog/why-dependently-typed-programming-will-one-day-rock-your-world.html][Interesting blog post]]
+Read about: dependent types, currying
+
+The language's type system is a very controversial matter but one that does
+require a lot of thinking.
+
+There should be a way to allow for types of functions to be included into
+the type system so that we can accomodate higher order functions. A syntax
+I can imagine for it is like the following:
+#+BEGIN_SRC C++
+data my_type {
+a -> (b, c) -> d
+};
+#+END_SRC
+
+A function that could be of this type is the following:
+
+#+BEGIN_SRC C++
+foo(a) {
+      .....
+  return function(b, c) {
+        return a + b + c;
+  }
+}
+#+END_SRC
+
+or in other notation
+#+BEGIN_SRC C++
+func foo (a:A)->(b:B, c:C) -> D {
+   return a + b +c;
+}
+#+END_SRC
+
+
+(note: in Haskell, ML a function's arguments are separated by -> .. so the
+below as originally written by steffen was)
+#+BEGIN_SRC haskell
+x:string -> print_types(x) -> void
+#+END_SRC
+
+Stephen mentioned that with dependent types you can have functions that are
+all just executed in compile time since they are only used in type
+checking. This, he said can end up being quite a bit complicated.
+
+In which case print_types(x) would be a compile time function implemented
+like:
+
+As an example he said to think of the printf function.
+printf is of type:     x:string, print_types(x) -> void
+
+#+BEGIN_SRC C++
+print_types(x) {
+
+    match(x)
+             '%d' => int, print_types(rest(x))
+             '%s' => string,print_types(rest(x))
+              ....
+            else: print_types(rest(x))
+    }
+}
+#+END_SRC
+
+and running this compile time function to determine the type of
+=printf("eleos %s lol %d")= would give us
+=x:string, string, int, -> void=
+** Variadic generics
+When I delve more into how generics work in Refu then think if it would be
+possible and beneficial to introduce variadic generics, so that we have
+functions with variadic number of arguments of known types.
+C++11 can do it: http://stackoverflow.com/questions/10044449/a-function-with-variable-number-of-arguments-with-known-types-the-c11-way
+** Type inference
+When I delve more into how generics work in Refu then think if it would be possible and beneficial to introduce variadic generics, so that we have functions with variadic number of arguments of known types.
+C++11 can do it: http://stackoverflow.com/questions/10044449/a-function-with-variable-number-of-arguments-with-known-types-the-c11-way
+
+* Runtime implementation
+** Some thoughts
+As far as the runtime is concerned I believe I should have a memory
+allocation scheme for all of the recursive data structures. The way I have
+thought it up is having preallocated blocks of segments. Segment is not the
+right word to use for it but let's go with it for now. Must have
+preallocated blocks of segments of various sizes. Segment of
+2 bytes, 4 bytes, 8 bytes, 16 bytes e.t.c up to a maximum limit.
+Each segment should have the payload which would be anything ... as long as
+it fits the segment size and then at the end a pointer to the next segment
+which shall initially be null.
+
+All the recursive data structures should request and add segments from this
+memory region. This region should be managed by the runtime with a simple
+memory allocation algorithm. Each time that a node is to be added to a data
+structure then a segment from the region should be requested. Have to think
+what to do about structures which would exceed the size limit. I suppose
+fallback to malloc?
+
+In another note I believe I should have a configurable pool of worker
+threads in the runtime doing nothing unless the user requests
+parallelization in which case he would not have to bother himself with
+threading but simply with his algorithm and the work will be separated
+ between the worker threads. More thoughts on this to come later.
+
+Functional language and imperative hybrid? Pattern matching is a killer
+feature! (But how heavy is its implementation?)
+Whether or not functional language constructs are added into the language,
+a form of pattern matching can be added since it seems to be quite useful.
+Investigate more. For example erlang style bit pattern matching?
+http://learnyousomeerlang.com/starting-out-for-real#bit-syntax
+
+For pattern matching (and I suppose general functional language programming implementations look at)
+http://research.microsoft.com/en-us/um/people/simonpj/papers/slpj-book-1987/
+** Memory allocators
+I have been thinking of having a kind of slab memory pool allocator. So to
+basically have different memory pools for different sizes of structures
+like so:
+#+BEGIN_SRC ditaa :file images/slab_memory_pool.png
+/--+       +--------------------+
+|2 | ----- | 2 byte memory pool | ----+
++--/       +--------------------+     |
+/--+       +--------------------+     |
+|4 | ----- | 4 byte memory pool | ----+
++--/       +--------------------+     |
+/--+       +--------------------+     |
+|8 | ----- | 8 byte memory pool | ----+
++--/       +--------------------+     |
+                                      |
+            ......                    |
+/--+       +--------------------+     |
+|64 | ---- | 64 byte memory pool| ----+
++--/       +--------------------+     |
+                                      |
+                             +----------------+
+                             | Chunk allocator|
+                             +----------------+
+#+END_SRC
+
+Another nice addition to this would be a named allocator that would be used
+by the language's runtime. What a named allocator means is that the runtime
+has a special memory pool for each of the structures/data objects created
+by the compiled program. This allows the user to optionally also collect
+statistic as to how many instances of a particular object have been
+initialized, how many freed e.t.c.
+
+#+BEGIN_SRC ditaa :file images/slab_memory_pool2.png
+                       /--+       +--------------------+
+                       |2 | ----- | 2 byte memory pool | ----+
+                       +--/       +--------------------+     |
+/------------------+   /--+       +--------------------+     |
+| person allocator |-- |4 | ----- | 4 byte memory pool | ----+
++------------------/   +--/       +--------------------+     |
+                       /--+       +--------------------+     |
+                       |8 | ----- | 8 byte memory pool | ----+
+                       +--/       +--------------------+     |
+                                                             |
+                                   ......                    |
+/------------------+   /---+       +---------------------+   |
+| book   allocator |-- |64 | ----- | 64 byte memory pool | --+
++------------------/   +---/       +---------------------+   |
+                                                             |
+                                                    +----------------+
+                                                    | Chunk allocator|
+                                                    +----------------+
+#+END_SRC
+
+The way that a free list can be kept is like below:
+
+#+BEGIN_SRC C++
+struct mem_meta {
+    mem_meta *next;
+    size_t sz;
+    uint8_t buf[]; //flexible array members
+};
+#+END_SRC
+
+So when you allocate a pointer from the memory pool you will allocate the
+whole mem_meta. and return the buf. When the user frees he would free the
+buffer and we at the implementation would take the mem_meta * with the
+container_of() macro and hene know the size and/or other meta data. With
+those data it would be possible to decide which pool to use for freeing
+(basically add it to the free list of that pool.
+
+From my talk with Stephen he mentioned some scheme that concurrent allocators
+like jmalloc use. There may be (gotta check for the details) a global slab
+allocator that allocates different sizes of elements from different memory
+pools from a global pool. then threads acquire this big pool with a mutex
+and allocate from there. When they free they send the elemnts to a free list,
+so that they can be reallcoated later without having to hold the global mutex.
+
+This is a nice scheme but a big disadvantage of it is that if one thread
+allocates and another thread frees, like it so often tends to happen,
+then there is a bottleneck in the global allocator since the thread-local
+free-lists are never used.
+
+* Notes / Thoughts / Resources
+** Haskel internal representation
+http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/HeapObjects
+http://stackoverflow.com/questions/15063115/internal-representation-of-haskell-lists
+http://stackoverflow.com/questions/3254758/memory-footprint-of-haskell-data-types
+** Coroutines and continutations
+General Continuation implementation:
+  http://c2.com/cgi/wiki?ContinuationImplementation
+
+Coroutine implementations in C:
+http://www.chiark.greenend.org.uk/~sgtatham/coroutines.html
+** Error handling thoughts
+http://programmers.stackexchange.com/questions/147059/the-modern-way-to-perform-error-handling
+** Algebraic Data types
+http://blog.lab49.com/archives/3011
+http://stackoverflow.com/questions/16770/haskells-algebraic-data-types
+
+Interestni questions about AlgDT and haskell in SO:
+http://stackoverflow.com/questions/9190352/abusing-the-algebra-of-algebraic-data-types-why-does-this-work
+** Tail call optimization
+I should try and make sure that many things that require recursion and
+deal with the ADTs strive for tail recursion and [[http://stackoverflow.com/questions/310974/what-is-tail-call-optimization][tail call optimization]]
