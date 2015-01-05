@@ -1,0 +1,26 @@
+#+FILETAGS: REFULANG
+
+Notes about the intermediate representation format for refu.
+Its codename is irf.
+
+
+* Introduction
+The intermediate representation of refu is the result of the compiling phase. It's what's created after a file is parsed and processed
+and is also what's fed to the subsequent levels of processing such as the backend.
+
+* Specification
+Each source files corresponds to one irf object. One irf object can have many
+functions and each function has its own stack and address space.
+
+** String literals table
+A string table with all the string literals occuring in the file
+
+** Identifiers table
+A string table with all the identifiers occuring in the file
+
+** Function
+A function is what all programs are organized in. A function contains an execution block.
+
+** Basic Block 
+A basic block contains a series of expressions and statements to be executed without any branching. It always contains one
+entry point and one exit point.
