@@ -508,6 +508,39 @@ fn foo (a:u64 | b:string) { }
 foo(true)
 #+END_SRC
 That's because this would require two different implicit conversions.
+** Explicit conversions
+Explicit conversions allow for quite a bit more freedom for converting between types. An explicit conversion
+is achieved with a function call to the name of the type. Much like a constructor of a user defined type, which 
+itself could be thought of as a sort of a type conversion.
+
+All integer types can be converted to each other with explicit conversions, except for constants
+that would obviously cause loss of data.
+#+BEGIN_SRC C++
+a:u64 = 542312
+b:i16 = i16(a)    // valid explicit conversion, would give warning as implicit
+c:u16 = u16(b)    // valid explicit conversion, would give warning as implicit
+d:u8  = u8(-13)   // invalid explicit conversion, obvious loss of data
+e:u8  = u8(65535) // invalid explicit conversion, obvious loss of data
+#+END_SRC
+
+Floats can be explicitly converted to ints.
+#+BEGIN_SRC C++
+a:f32 = 3.2313;
+b:f64 = 123.231233;
+c:u32 = u32(a);  // valid explicit conversion, would give warning as implicit
+d:u16 = u16(b);  // valid explicit conversion, would give warning as implicit
+#+END_SRC
+
+An interesting case is explicit conversion to string. Explicit conversion to string is allowed
+but only for integer, floating constant and booleans.
+#+BEGIN_SRC C++
+a:u32 = 2321;
+b:string = string(2313)   // valid conversion
+c:string = string(a)      // invalid conversion, not constant
+d:string = string(23.231) // valid conversion
+e:bool = (3 == 4)
+e:string = string(e)      // valid conversion
+#+END_SRC
 
 * Memory Model
 ** Specification
