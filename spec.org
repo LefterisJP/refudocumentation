@@ -419,6 +419,96 @@ Those buffers will be freed when the containing struct gets freed.
 Thinking if the language should have arrays, maybe some form of
 lists e.t.c. A nice analysis can be seen [[http://pcwalton.github.io/blog/2012/12/28/a-tour-of-vectors/][here]]
 
+* Types and Conversions
+** Specification
+All elementary types can be converted from and to another type. Type conversion
+can either be explicit or implicit.
+** Implicit Conversion
+Implicit conversion happens when you simply assign a value of one type to a value of
+another type for which conversion is legal. It can also happen during almost all other
+parts of the code like in a function call, in a constructor e.t.c.
+
+The implicit conversion rules for elementary types can be seen in the following table.
+| from/to | i8 | u8 | i16 | u16 | i32 | u32 | i64 | u64 | f32 | f64 | string | bool | nil |
+| i8      | OK | WC | WC  | OK  | WC  | OK  | WC  | OK  | OK  | OK  | NO     | OK   | NO  |
+| u8      | OK | OK | OK  | OK  | OK  | OK  | OK  | OK  | OK  | OK  | NO     | OK   | NO  |
+| i16     | WC | WC | OK  | WC  | OK  | WC  | OK  | WC  | OK  | OK  | NO     | OK   | NO  |
+| u16     | WC | WC | OK  | OK  | OK  | OK  | OK  | OK  | OK  | OK  | NO     | OK   | NO  |
+| i32     | WC | WC | WC  | WC  | OK  | WC  | OK  | WC  | OK  | OK  | NO     | OK   | NO  |
+| u32     | WC | WC | WC  | WC  | OK  | OK  | OK  | OK  | OK  | OK  | NO     | OK   | NO  |
+| i64     | WC | WC | WC  | WC  | WC  | WC  | OK  | WC  | OK  | OK  | NO     | OK   | NO  |
+| u64     | WC | WC | WC  | WC  | WC  | WC  | OK  | OK  | OK  | OK  | NO     | OK   | NO  |
+| f32     | NO | NO | NO  | NO  | NO  | NO  | NO  | NO  | OK  | OK  | NO     | NO   | NO  |
+| f64     | NO | NO | NO  | NO  | NO  | NO  | NO  | NO  | OK  | OK  | NO     | NO   | NO  |
+| string  | NO | NO | NO  | NO  | NO  | NO  | NO  | NO  | NO  | NO  | NO     | NO   | NO  |
+| bool    | OK | OK | OK  | OK  | OK  | OK  | OK  | OK  | NO  | NO  | NO     | OK   | NO  |
+| nil     | NO | NO | NO  | NO  | NO  | NO  | NO  | NO  | NO  | NO  | NO     | NO   | NO  |
+
+The values of the table are:
+- OK -> conversion is allowed
+- NO -> conversion is not allowed
+- WC -> conversion produces a warning for a value of type and error for a constant of type
+        since then we are sure that data is going to be lost. Only works for assignments now.
+
+From the table we can understand that the general idea is that:
+- All int types can be converted to each other except for:
+  - signed to unsigned, which produces a warning and fails for constants
+  - large  to smaller, which produces a warning and fails for constants
+- All int types can be converted to booleans
+- All int types can be converted to floats
+- Floats can be converted to each other
+- Bool can be converted to integer types
+
+Below are some examples for assignments
+#+BEGIN_SRC C++
+a:u8 = 128
+b:u32 = a      // implicit conversion allowed
+c:u8 = b       // implicit conversion will produce a warning. Larger to smaller.
+d:u8 = 65535   // implicit conversion will fail. Constant is of larger type
+f:i8 = 64
+e:u8 = f       // implicit conversion will produce a warning. Signed to unsigned.
+g:u8 = -64     // implicit conversion will fail. Signed constant to unsigned variable.
+h:i64 = true   // implicit conversion allowed. h == 1
+f:bool = 2245  // implicit conversion allowed. f == true
+j:bool = 0     // implicit conversion allowed. j == false
+#+END_SRC
+
+As far as binary operators are concerned the result of an operation to elementary types is valid
+if one of the operands can be converted to each other. If that is the case the type of the operation
+is the type of the larger type.
+#+BEGIN_SRC C++
+a:u64 = 653432431
+b:u16 = 2324
+c:f32 = 3.14
+d:string = "abc"
+a + b // valid u16->u64, type will be u64
+b + c // valid u16->f32, type will be f32
+c + d // invalid
+#+END_SRC
+
+A type can be implicitly converted to a sum type by succesfull conversion to either of its sum operands.
+For example:
+#+BEGIN_SRC C++
+fn foo (a:u64 | b:string) { }
+
+...
+
+foo(45)
+foo("eleos")
+#+END_SRC
+
+
+Only one implicit conversion is allowed per type comparison. Continuing from the above example
+we can't have:
+#+BEGIN_SRC C++
+fn foo (a:u64 | b:string) { }
+
+...
+
+foo(true)
+#+END_SRC
+That's because this would require two different implicit conversions.
+
 * Memory Model
 ** Specification
 The memory model of Refu is very similar to that of C++11. All non-pointer objects
