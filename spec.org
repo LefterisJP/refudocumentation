@@ -1386,7 +1386,7 @@ nil | (load:T, tail:uptr<list>)
 a:list<int> = list<int>(1, 2, 3)
 list_type:string = match a {
    (nil) => "empty list"
-   (type int, _) => "list of ints"
+   (int, _) => "list of ints"
    _ => "other kind of list"
 }
 #+END_SRC
@@ -1396,6 +1396,22 @@ that, an expression and can as easily be assigned to something. Also a
 match can be on some type with the built-in keyword =typeof=. Finally it
 is a compile error to not exhaust all possible matches, so the _ at the
 end matches all other cases.
+
+#+BEGIN_SRC C++
+type foo {
+a:i16 | b:u16 | c:string | d:bool
+}
+
+a:foo
+match a {
+    (string | bool) => "not a number"
+    (a:(i16 | u16)) => 5 + a
+} 
+#+END_SRC
+
+Another way to define patterns is by using the type operators. As can be seen above
+one can combine possible type reductions using the same operators we use when a
+type is defined.
 
 ** Thoughts                                                       :noexport:
 As very nicely stated on [[http://stackoverflow.com/a/2226292/110395][this SO answer]], pattern matching is the elimination
