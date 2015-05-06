@@ -1,11 +1,10 @@
 #+TITLE: Refu language specification
 #+AUTHOR: Lefteris Karapetsas
 
+* Introduction
 This is currently a work in progress. Nothing is final, nor decided but the purpose
 of this document is to gather everything in one place so that the formal spec of the
 language slowly takes shape.
-
-
 * Built-in data types
 ** Specification
 The following data types are built-in. Some of them correspond to the data types
@@ -20,7 +19,7 @@ scheme as in rust.
   + =u64=: 64 bit unsigned integer, corresponding to =uint64_t=
 
 - *Signed numbers*
-  + =int=: comiler will decide the size depending on context
+  + =int=: compiler will decide the size depending on context
   + =i8=: 8 bit signed integer, corresponding to =int8_t=
   + =i16=: 16 bit signed integer, corresponding to =int16_t=
   + =i32=: 32 bit signed integer, corresponding to =int32_t=

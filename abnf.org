@@ -1,6 +1,7 @@
 #+FILETAGS: REFULANG
 
-Grammar for Refu in [[http://tools.ietf.org/html/rfc5234][ABNF]] format
+Grammar for Refu in [[http://tools.ietf.org/html/rfc5234][ABNF]] format. I know that it does not look really good in html format.
+Will try to fix it when possible.
 
 * Terminal rules (tokens)
 TOKEN_KW_CONST = "const"

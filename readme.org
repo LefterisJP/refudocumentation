@@ -1,0 +1,16 @@
+#+TITLE: Refulang
+#+OPTIONS: toc:nil
+#+AUTHOR: Lefteris Karapetsas
+
+
+
+* Info                                                             :noexport:
+This documentation is written in org-mode. An html version is also automatically generated
+and pushed to the web and can be found here [[http://refu.co/]]
+* Documentation
+Loosely updated documentation for refulang. This aims to contain the specification
+of the language and any miscellaneous documentation that is required. It is
+going to be updated as development progresses.
+
+ - [[file:spec.org][Refu specification]]
+ - [[file:abnf.org][Refu Grammar]]

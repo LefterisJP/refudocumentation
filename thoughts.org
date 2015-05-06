@@ -1,3 +1,4 @@
+ #+TAGS: noexport
 This file simply contains some thoughts and notes regarding the language
 
 * Features to experiment with
