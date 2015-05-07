@@ -46,7 +46,7 @@ Maybe add f16 and f128 in the future?
 More complex data types can be defined by the user as Algrebraic data types. This is
 achieved with the =type= keyword.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type person {
     name:string ,age:int |
     name:string, age:int, surname:string
@@ -76,7 +76,7 @@ In order to construct an instance of a data type you have to use one of its
 constructors. A constructor of an object is simply defined as any of its 
 sum type operands.
 #+NAME Constructing an instance of a data type
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:person = person("steven", 23)
 b:person = person("celina", 22, "wojtowicz")
 #+END_SRC
@@ -88,7 +88,7 @@ passing keyword arguments the order of the arguments does not matter as
 opposed to when calling a constructor normally.
 
 #+NAME: Constructing an instance of a data type with keyword arguments
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:person = person(name="steven", age=23)
 b:person = person(name="celina", surname="wojtowicz", age=23)
 #+END_SRC
@@ -96,7 +96,7 @@ b:person = person(name="celina", surname="wojtowicz", age=23)
 As we saw in the very beginning data types can also be recursive. This is
 how we can define collections in Refu. But how do you construct a collection?
 #+NAME: Constructing an instance of a recursive data type
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:list = nil
 b:list = list(1, 2, 3, 4, 5)
 c:list = list(1, list( 2, list(3, list(4, list(5, nil)))))
@@ -116,7 +116,7 @@ expand the =list(1, 2, 3, 4, 5)= to =list(1, list(2, list(3, list(4, list(5, nil
 
 Same thing can work for more complex recursive data types such as a binary
 tree. Look below for an example.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type binary_tree {
 nil | load:int, left:uptr<binary_tree>, right:uptr<binary_tree>
 }
@@ -142,34 +142,34 @@ you can encounter the ADT syntax without it having been defined.
 For example, a function's argument can be an anonymous ADT.
 
 #+NAME: Example 1
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn print_me(a:(string | b:int, c:int))
 {
     //do some initialization stuff
     ...
     //and now do the pattern matching
-    match(a) {
-        (string) => print("%s", a)
-        (int, int) => print("%d %d", a.b, a.c)
+    match a {
+        string   => print("%s", a)
+        int, int => print("%d %d", a.b, a.c)
     }
 }
 #+END_SRC
 
 #+NAME: Example 2
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn print_me(a:string | (b:int, c:int)) -> int
-(_) => print("%s", a)
-(_, _) => print("%d %d", b, c)
+_     => print("%s", a)
+_, _  => print("%d %d", b, c)
 #+END_SRC
 
 #+NAME: Example 3
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn print_me(a:string | (b:int, c:int)) -> int
-(_) => {
+_    => {
     print("%s", a)
     print("one argument")
 }
-(_, _) => {
+_, _ => {
     print("%d %d", b, c)
     print("two arguments")
 }
@@ -196,7 +196,7 @@ can be quite complicated but when the compiler takes mutability into account
 many optimizations can be performed especially for a very simple data structure
 with only one link like the list.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 {
     const a:list = list(1, 2, 3, 4)// this is an immutable list
     b:uptr<list> = list(1, 2, 3, 4)//mutable list on the heap
@@ -274,7 +274,7 @@ Another very interesting article about types of data is [[http://tel.github.io/2
 the algebra of the algebraic data types is here. ([[http://chris-taylor.github.io/blog/2013/02/10/the-algebra-of-algebraic-data-types/][Part 1]], [[http://chris-taylor.github.io/blog/2013/02/11/the-algebra-of-algebraic-data-types-part-ii/][Part2]], [[http://chris-taylor.github.io/blog/2013/02/13/the-algebra-of-algebraic-data-types-part-iii/][Part 3]])
 ** Implementation considerations                                  :noexport:
 This ADT declaration for a list in refu (data list = 1 + int*list)
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list{
     nil | a:int, next:uptr<list>
 }
@@ -337,7 +337,7 @@ bool is_CONS(list *l)
 #+END_SRC
 
 And as an example of a function using ADTs think of this.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn len(a:list) -> int {
     len NULL = 0
     len CONS(_, rest) = 1 + len(rest)
@@ -362,7 +362,7 @@ int len(list *l)
 Array types are like simple C arrays that are aware of their own size so as to
 make sure there is no out of bounds access. An array is simply a contiguous 
 block of memory containing values of the same type.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 array_of_ints:int[20]
 array_of_strings:string[20]
 a:int = array_of_ints[5]
@@ -373,7 +373,7 @@ c:int = array_of_ints[22] //compile error
 Dynamic size arrays can also be instantiated with the built-in =make_arr(type, elements_number)=
 function. An array's size in elements can be queried by =array.size=.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn foo(b:ref<u8[]>) {
     b[3] = 16;
 }
@@ -387,7 +387,7 @@ printf("%d", buffer[3]); // should print 16
 Array types are also closely related to the way the memory model of the
 language works and to how a buffer can be initialized.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type parser {
     byte_size:int,
     string_size:int,
@@ -459,7 +459,7 @@ From the table we can understand that the general idea is that:
 - Bool can be converted to integer types
 
 Below are some examples for assignments
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:u8 = 128
 b:u32 = a      // implicit conversion allowed
 c:u8 = b       // implicit conversion will produce a warning. Larger to smaller.
@@ -475,7 +475,7 @@ j:bool = 0     // implicit conversion allowed. j == false
 As far as binary operators are concerned the result of an operation to elementary types is valid
 if one of the operands can be converted to each other. If that is the case the type of the operation
 is the type of the larger type.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:u64 = 653432431
 b:u16 = 2324
 c:f32 = 3.14
@@ -487,7 +487,7 @@ c + d // invalid
 
 A type can be implicitly converted to a sum type by succesfull conversion to either of its sum operands.
 For example:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn foo (a:u64 | b:string) { }
 
 ...
@@ -499,7 +499,7 @@ foo("eleos")
 
 Only one implicit conversion is allowed per type comparison. Continuing from the above example
 we can't have:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn foo (a:u64 | b:string) { }
 
 ...
@@ -514,7 +514,7 @@ itself could be thought of as a sort of a type conversion.
 
 All integer types can be converted to each other with explicit conversions, except for constants
 that would obviously cause loss of data.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:u64 = 542312
 b:i16 = i16(a)    // valid explicit conversion, would give warning as implicit
 c:u16 = u16(b)    // valid explicit conversion, would give warning as implicit
@@ -523,7 +523,7 @@ e:u8  = u8(65535) // invalid explicit conversion, obvious loss of data
 #+END_SRC
 
 Floats can be explicitly converted to ints.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:f32 = 3.2313;
 b:f64 = 123.231233;
 c:u32 = u32(a);  // valid explicit conversion, would give warning as implicit
@@ -532,7 +532,7 @@ d:u16 = u16(b);  // valid explicit conversion, would give warning as implicit
 
 An interesting case is explicit conversion to string. Explicit conversion to string is allowed
 but only for integer, floating constant and booleans.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:u32 = 2321;
 b:string = string(2313)   // valid conversion
 c:string = string(a)      // invalid conversion, not constant
@@ -546,7 +546,7 @@ e:string = string(e)      // valid conversion
 The memory model of Refu is very similar to that of C++11. All non-pointer objects
  are allocated on the stack and are freed when they go out of scope.
 For example:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 {
     a:int
     s:string
@@ -560,7 +560,7 @@ pointers.
 *** Unique pointers
 A unique pointer, is a special generic type represented by =uptr<T>=
 For example
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type person {
     name:string,
     age:int
@@ -590,11 +590,11 @@ An owned pointer can also appear inside a data definition. If that happens
 then that means that objects of the data type own the object to which they
 contain an owned pointer. 
 
-#+BEGIN_SRC C++
-data file_index {
+#+BEGIN_SRC refu
+type file_index {
     nil | index:uptr<something>
 }
-data person {
+type person {
     name:string,
     age:int,
     index:uptr<file_index>
@@ -649,7 +649,7 @@ keyword =fn= followed by the name of the function, the arguments and
 finally by an arrow pointing to the return value.  If there is no return
 value then the arrow is omitted. Some examples follow:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn add_two_ints(a:int, b:int) -> int
 {
      return a + b
@@ -666,7 +666,7 @@ that determines the return value. A function may return a value but still
 need no return value if it's compact enough and has all its
 functionality under a =match=, =if= or =for= expression. For example:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn int_inside_range(x:int, from:int, to:int) -> bool
 {
     if (x >= from && x <= to) { true} else { false}
@@ -677,7 +677,7 @@ In the absense of a return value the function's last expression statement
 value is interpreted as the return value. For example the following function's 
 return value is determined by a + 1
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn do_something(a:int) -> int
 {
     a = a * 2
@@ -691,7 +691,7 @@ fn do_something(a:int) -> int
 #+END_SRC
 
 Moreover a function can also completely omit a body block if it has a match expression on its arguments like below:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn find_length(a:~list)->int
 (nil) => 0
 (_, tail) => 1 + find_length(tail)
@@ -701,7 +701,7 @@ fn find_length(a:~list)->int
 Refu supports type parameters, which syntactically look like generics of some other programming languages. Their use will
 be seen heavily in the use of typeclass below but first let's see the syntax.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list<type T> {
      nil | payload:T , tail:uptr<list>
 }
@@ -714,9 +714,9 @@ a:list<int> = (5, 6, 7, 8)
 This would define a generic ADT list, and later the user declares a list
 of ints and populates it. Same thing can be done with an ADT binary tree.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type binary_tree <type T> {
-    Nil | payload:T , left_branch:uptr<binary_tree>, right_branch:uptr<binary_tree>
+    nil | payload:T , left_branch:uptr<binary_tree>, right_branch:uptr<binary_tree>
 }
 ...
 ...
@@ -737,9 +737,10 @@ or by a type of a type also known as a =kind=. We will read more about kinds in 
 
 * Kinds
 ** Specification
-Kinds are like the types of types. For example =type= is a concrete type while =derivative= is a kind defined as:
+Kinds are like the types of types. For example =type= is a concrete type while
+ =derivative= is a kind defined as:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 kind derivative {
    type -> type
 }
@@ -748,7 +749,7 @@ kind derivative {
 which means that a type that is derived from another type is a derivative type.
 
 For example our good old friend the list as seen below.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list <type T>{
     nil | (load:int, tail:uptr<T>)
 }
@@ -763,7 +764,7 @@ kind complicated {
 #+END_SRC
 This new complicated kind takes a concrete type and a type of derivative kind as defined above
 and produces a concrete type. But how would an example of a type of this kind look? Look below:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list_with_size <type T, derivative Y>{
     a:Y<T>, b:int
 }
@@ -788,7 +789,7 @@ shall be added. One can notice the keyword =self= which defines the object
 the function will be called for and also the generic syntax of =<type T>=
 since we can't know the type of the object we are adding.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 class addition<type T> {
    fn(self:T, other:T) -> T
 }
@@ -816,7 +817,7 @@ typeclasses allow for special operations. In particular it allows for overloadin
 two vectors would in essence call the instance of the typeclass.
 *** Advanced example
 Following you will find a more complicated example of the use of typeclasses.
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 type uptr<type T> {
     nil | p:*T // using C notation for the pointer here
 }
@@ -832,7 +833,7 @@ In the above code example we create a class for pointer types. All pointers need
 correctly, the kind of pointer (shared, unique, raw) and the type of the object that the pointer will point to.
 
 Let's look below at the example of one such type, the unique pointer, which is an instance of this typeclass.
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 instance pointers<uptr, type T> {
     fn assign (self:uptr<T>, other:uptr<T>)
     {
@@ -856,7 +857,7 @@ of the functions of the pointers typeclass, and provides their implementation. T
 the declaration of the =uptr= type should exist.
 
 Another notation that would combine the type instantiation along with the instance of the typeclass can be seen below.
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 type uptr<type T> {
     nil | p:*T // using C notation for the pointer here
 } derives pointers<uptr, T> {
@@ -881,7 +882,7 @@ Imagine for a moment that we would also want to overload the =&= operator to all
 That means we would want the same function to be used in the implementation of different typeclasses.
 In that case we would need to have one small change in the above code.
 
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 class ampersand<type T> {
     fn overload(self:T) -> Any
 }
@@ -915,7 +916,7 @@ function for a typeclass instance.
 
 *** Typeclass Inheritance
 The use of typeclasses is extended by the possibility of inheritance between typeclasses.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 class equality<type T> {
     fn equals(self:T, other:T) -> bool
     fn nequals(self:T, other:T) -> bool
@@ -968,7 +969,7 @@ other a descending order ordering. There should be a way to choose in
 runtime which of the two implementations the ordering would use.
 
 So let's look at the following example, which will not compile.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 instance ordering ord_ascend<vector> {
     fn(self)
     {
@@ -1009,7 +1010,7 @@ this implementation for the ordering typeclass
 
 And finally below we can see how to change the choice of typeclass instance
 in runtime. (TODO)
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:list // ord_ascend
 b:list<ordering: ord_ascend> // ord_ascend
 c:list<ordering: ord_descend> //ord_descend
@@ -1036,7 +1037,7 @@ will present them here.
   will unwind, calling the deallocators of all objects it encounters
   until a catch is hit.
 
-  #+BEGIN_SRC C++
+  #+BEGIN_SRC refu
   fn calculate_square_root(a:double) -> double
   {
       if (a < 0.0) {
@@ -1070,7 +1071,7 @@ like std::exceptions::memory, std::exceptions::io and
 std::exceptions::numeric. To define an exception as a member of an
 exception class the following syntax is used:
 
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 type negative_in_sqrt {
     msg:string
 } derives std::exception<negative_in_sqrt>
@@ -1088,7 +1089,7 @@ checks are performed in compile time, and compiled away for the runtime.
 If not they raise an exception in runtime. The user has the option to
 completely disable them for a release build.
 (Have to think if this should actually happen)
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn calculate_square_root(a:double) -> double
 :precond(a >= 0.0)
 :postcond(result >= 0.0) //not needed, but just here as an example
@@ -1104,20 +1105,20 @@ fn calculate_square_root(a:double) -> double
 ** Specification
 Programs and libraries written in Refu are divided in modules. A module
 can be imported from other parts of code as is, like:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 import geometry
 #+END_SRC
 
 Certain functions, structs or data from modules can also be imported
 alone so that the global namespace is not polluted.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 import vector3d, model from geometry
 #+END_SRC
 
 Additionally, imported objects can be given an alias so as to avoid
 name conflicts
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 import vector3d, model from geometry as vector_imp, model_imp
 #+END_SRC
 
@@ -1125,7 +1126,7 @@ import vector3d, model from geometry as vector_imp, model_imp
 To encapsulate code into a module one would need to enclose it in
 a module block like so:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 module geometry {
 ...
 ...
@@ -1141,15 +1142,15 @@ would be private in the module by default. To mark something as public and
 exportable to other modules then you would have to prepend it with the
 =export= keyword.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 module geometry{
 
-    struct private_foo{
+    type private_foo{
     ...
     }
 
     //model will be exported since it has the export attribute
-    export struct model{
+    export type model{
     }
 
     //this function will be visible from outside the module
@@ -1174,7 +1175,7 @@ different systems.
 As an example consider an IO module that implements I/O functionality for
 Linux, Windows, ARM or even javascript!
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 signature io {
     type file; /* definition is in module implementation */
 
@@ -1186,7 +1187,7 @@ signature io {
 
 and in two other separate files, the module implementation could be like
 this for a different windows and linux implementation.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 linux_io implof io {
     type file {
         ...
@@ -1207,7 +1208,7 @@ linux_io implof io {
 }
 #+END_SRC
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 windows_io implof io {
     type file {
         ...
@@ -1233,7 +1234,7 @@ particular module implementation.
 Modules can also accept arguments. Irrespective of the way you declare a
 module it can always accept arguments.
 - *Signature*
-   #+BEGIN_SRC C++
+   #+BEGIN_SRC refu
    signature test_module(g:geometry, buffer_size:int = 512) {
 
        fn do_something()
@@ -1260,7 +1261,7 @@ module it can always accept arguments.
 
 - *Without Signature*
 
-  #+BEGIN_SRC C++
+  #+BEGIN_SRC refu
   module test_module(g:geometry, buffer_size:int = 512) {
       import g //import the module we passed as argument
 
@@ -1278,7 +1279,7 @@ module it can always accept arguments.
 
 In order to import this from some other place in the code you would do
 something like the following:
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 import some_module(my_geometry, 1024)
 #+END_SRC
 
@@ -1291,7 +1292,7 @@ In Refu an =if= can act either as an expression or like a statement
 depending on the context. That means, that you can assign an if
 expression as values to variables. The general if syntax is as follows:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 if i > 10 {
     increase_a_value()
     compress_a_file()
@@ -1307,7 +1308,7 @@ any kind of assignment. But observe below another example usage where =if=
 is used as an expression. Depending on the value of =i=, we assign a
 specific value to =a=.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 a:int
 a = if i > 10 {
         20
@@ -1322,7 +1323,7 @@ Unlike some other languages the curly braces can't be omitted in any
 branch of the if. If the condition of an if branch is complex enough then
 it should be enclosed in parentheses like so:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 if ((i > 10 && i <20) || (x > 30 && x < 40)) {
       do_something()
 }
@@ -1338,15 +1339,15 @@ Pattern matching is the elimination construct for algebraic data types.
 That means that a pattern matching expression, expresses how one should
 consume a partciular ADT. For example look below.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list {
 nil | load:int, tail:uptr<list>
 }
 
 a:list
 match a {
-     (nil) => print("empty list")
-     (i, _) => print("Head of the list is %d", i)
+     nil   => print("empty list")
+     i, _  => print("Head of the list is %d", i)
 }
 #+END_SRC
 
@@ -1354,22 +1355,22 @@ Match expressions can also be recursive. A =match()= inside a match expression
 renders the whole match recursive. For example look at the matching below
 which calculates the length of a list.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn find_length(a:ref<list>) -> int
 {
     return match a {
-        (nil) => 0
-        (_, tail) => 1 + match(tail)
+        nil      => 0
+        _, tail  => 1 + match(tail)
     }
 }
 #+END_SRC
 For completeness sake it should be noted that the above example can
 be written in a simpler way, having the function block omitted:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn find_length(a:ref<list>) -> int
-(nil) => 0
-(_, tail) => 1 + find_length(tail)
+nil      => 0
+_, tail  => 1 + find_length(tail)
 #+END_SRC
 
 In a =match=, all possible value combinations must be exhausted. =_= means
@@ -1377,16 +1378,16 @@ any value, =nil= means no value and anything else is interpreted as an
 identifier to recognize that particular positional argument. Another way
 to match something would be depending on the type. For example.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list<T> {
 nil | (load:T, tail:uptr<list>)
 }
 
 a:list<int> = list<int>(1, 2, 3)
 list_type:string = match a {
-   (nil) => "empty list"
-   (int, _) => "list of ints"
-   _ => "other kind of list"
+   nil      => "empty list"
+   int, _   => "list of ints"
+   _        => "other kind of list"
 }
 #+END_SRC
 
@@ -1396,15 +1397,15 @@ match can be on some type with the built-in keyword =typeof=. Finally it
 is a compile error to not exhaust all possible matches, so the _ at the
 end matches all other cases.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type foo {
-a:i16 | b:u16 | c:string | d:bool
+    a:i16 | b:u16 | c:string | d:bool
 }
 
 a:foo
 match a {
-    (string | bool) => "not a number"
-    (a:(i16 | u16)) => 5 + a
+    string | bool   => "not a number"
+    a:(i16 | u16)   => 5 + a
 } 
 #+END_SRC
 
@@ -1423,7 +1424,7 @@ The simplest way to iterate something in refu is by using a for
 expression. The syntax is simple. For a simple iteration of n times one
 can use the following.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 for i in [0..10] {
       do_something(); //this will iterate 11 times, with i ranging from 0 to 10
 }
@@ -1435,7 +1436,7 @@ range is a numeric expression within braces of the form
 [start .. step .. end].
 The step is optional and is shown in the next example.
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 for i in [0..2..10] {
      print(i); //this will print 0, 2, 4, 6, 8, 10
 }
@@ -1445,7 +1446,7 @@ For expressions are also heavily customizeable on a per type basis.
 By deriving the standard library's iterator typeclass you can define
 how the expression behave for a specific type. For example:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 type list {
     nil | payload:int, tail:uptr<list>
 }
@@ -1471,7 +1472,7 @@ just defined the way that lists can be iterated. Afterwards whenever a for
 expression is used on a list, the defined implementation is used.
 The iterator typeclass looks like this:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 class iterator<type T> {
      fn(self:ref<T>) -> (nil | (Any, T))
 }
@@ -1486,7 +1487,7 @@ iteration.
 But if you recall the title of the section is for *expressions*. As expressions
 they can also be assigned. For example an array can be assigned like this:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 arr:int[3] = [5, 6, 7]
 another_arr:int[] = for i in arr { i + 3 }
 #+END_SRC
@@ -1502,7 +1503,7 @@ be acceptable.
 All data are by default mutable in Refu. In order to specify mutability
 the =const= keyword is used. 
 
-#+BEGIN_SRC c++
+#+BEGIN_SRC refu
 type data_record {
     index:int, name:string
 }
@@ -1530,7 +1531,7 @@ In Refu many small lightweight threads can be spawned. They are called
 routines and can be created with the rt keyword.
 For example:
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 fn print_some_stuff()
 {
    print("eleos")
