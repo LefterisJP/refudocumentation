@@ -3,8 +3,8 @@
 
 * Introduction
 This is currently a work in progress. Nothing is final, nor decided but the purpose
-of this document is to gather everything in one place so that the formal spec of the
-language slowly takes shape.
+of this document is to gather everything in one place so that the formal specification of 
+refulang slowly takes shape.
 * Built-in data types
 ** Specification
 The following data types are built-in. Some of them correspond to the data types
@@ -75,7 +75,7 @@ list.
 In order to construct an instance of a data type you have to use one of its
 constructors. A constructor of an object is simply defined as any of its 
 sum type operands.
-#+NAME Constructing an instance of a data type
+#+NAME: Constructing an instance of a data type
 #+BEGIN_SRC refu
 a:person = person("steven", 23)
 b:person = person("celina", 22, "wojtowicz")
@@ -457,6 +457,10 @@ From the table we can understand that the general idea is that:
 - All int types can be converted to floats
 - Floats can be converted to each other
 - Bool can be converted to integer types
+
+There is one **major** exception to the above rules and that is pattern matching. In patern matching
+no implicit conversions are allowed, except for smaller sized integers of the same signednes
+towards bigger sized integers.
 
 Below are some examples for assignments
 #+BEGIN_SRC refu
