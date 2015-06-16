@@ -1,0 +1,62 @@
+// A program that will read a file, create a vector of some objects depending
+// on each line of the file and then print it.
+// the file lines all have the following format:
+// [Profession] [attributes]
+// where Profession can be one of [Doctor, Engineer, Lawyer, Teacher]
+// and for each profession we have different attributes. All atributes are
+// simply space separated strings.
+// Doctor   -- 1. Specialty: string  2. Private practice: bool 3. Name: string
+// Engineer -- 1. Field: string  2. Name: string
+// Lawyer   -- 1. Salary: u32  2. Name: string
+// Teacher  -- 1. Subject: string  2. Years of experience: u32 3. Name: string
+
+import io
+import string
+
+type doctor {
+    specialty:string, bool:private_practise, name:string
+}
+
+type engineer {
+    field:string, name:string
+}
+
+type lawyer {
+    salary:u32, name:string
+}
+
+type teacher {
+    subject:string, years:u32, name:string
+}
+
+type person {
+    d:doctor | e:engineer | l:lawyer | t:teacher
+}
+
+fn process_doctor(words:vector<string>) -> uptr<doctor>
+{
+}
+
+fn process_line(line:string) -> uptr<person>
+{
+    // words is a vector<string>, which is inferred here
+    words = line.split(" ")
+    // this is a match expression, acting on value and not type
+    // being the last expression of the function it's also its return value
+    match words[0] {
+        // words[1:] is just a view to the words vector, it does not copy the vector
+        "Doctor"     => process_doctor(words[1:])
+        "Engineer"   => process_engineer(words[1:])
+        "Laywer"     => process_lawyer(words[1:])
+        "Teacher"    => process_teacher(words[1:])
+    }
+}
+
+fn main() -> u32
+{
+    // f is of type io::file, should be simply inferred here
+    f = io::open("filename")
+    for line in f {
+        process_line(line)
+    }
+}
