@@ -648,6 +648,7 @@ Here is [[http://static.rust-lang.org/doc/master/rust.html#pointer-types][rust's
 
 * Functions
 ** Specification
+*** General
 Functions in Refu are declared just like in the Rust language. The
 keyword =fn= followed by the name of the function, the arguments and
 finally by an arrow pointing to the return value.  If there is no return
@@ -700,6 +701,19 @@ fn find_length(a:~list)->int
 (nil) => 0
 (_, tail) => 1 + find_length(tail)
 #+END_SRC
+*** Argument Evaluation strategy
+The argument evaluation strategy is pass by value by default with some exceptions. 
+Pass by value means that the argument's value is copied into the function. All built-in
+data types are passed by value with the exception of =string=. Rules that apply to other
+user defined types also apply to =string=.
+
+Instances of a user defined type are passed by value, except for the case when the
+compiler sees that the object is not modified at all inside the function. In that case
+the compiler silently passes by constant reference as an optimization. Pass by reference means that
+the argument is not copied into the function but instead a reference to the original argument
+is passed.
+
+
 * Type Parameters
 ** Specification
 Refu supports type parameters, which syntactically look like generics of some other programming languages. Their use will
