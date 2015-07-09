@@ -13,6 +13,33 @@
 import io
 import string
 
+
+// stuff that should have been in a library -- START
+kind optional {
+    type | nil
+}
+
+kind function {
+    type -> optional
+}
+
+kind functions {
+    // 1 or more functions
+    function ...
+}
+
+
+// X is the number of computations that the monad will use in building
+// they must all accept the same arguments
+//
+// Y is the optional state that will be kept
+class monad<functions X, optional Y>
+{
+    fn bind(optional Y)
+    X...
+}
+// stuff that should have been in a library -- END
+
 type doctor {
     specialty:string, bool:private_practise, name:string
 }
@@ -37,7 +64,19 @@ fn process_doctor(words:vector<string>) -> uptr<doctor>
 {
 }
 
-fn process_line(line:string) -> uptr<person>
+
+// can also be written monad person
+monad person_reader(f:io::file) {
+    people:vec<person>
+    foreach_line(f) >>=
+    process_line()  >>=(p:person) { people.add(p) }
+    <<=
+}
+
+f.foreach_line().process_line()
+
+
+fn process_line(line:string) -> person
 {
     // words is a vector<string>, which is inferred here
     words = line.split(" ")
@@ -56,7 +95,6 @@ fn main() -> u32
 {
     // f is of type io::file, should be simply inferred here
     f = io::open("filename")
-    for line in f {
-        process_line(line)
-    }
+    people:vec<person> = person_reader(f)
+    //... no do something with the vector of people
 }
