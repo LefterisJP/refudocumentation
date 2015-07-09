@@ -641,6 +641,22 @@ denoted by =ptr<T>=
 //TODO
 
 ** Thoughts                                                       :noexport:
+[[https://doc.rust-lang.org/book/ownership.html][Here]] is a really good explanation of rust's ownership system. We should have a system that is at least as
+powerful/useful as that but maybe even simpler to use in some cases (?). A very important quote about the 
+borrowing rules in rust is given below:
+#+BEGIN_QUOTE
+First, any borrow must last for a smaller scope than the owner. Second, you may have one or the other of these two kinds of borrows, but not both at the same time:
+
+    0 to N references (&T) to a resource.
+    exactly one mutable reference (&mut T)
+
+You may notice that this is very similar, though not exactly the same as, to the definition of a data race:
+
+    There is a ‘data race’ when two or more pointers access the same memory location at the same time, where at least one of them is writing, and the operations are not synchronized.
+
+With references, you may have as many as you’d like, since none of them are writing. If you are writing, you need two or more pointers to the same memory, and you can only have one &mut at a time. This is how Rust prevents data races at compile time: we’ll get errors if we break the rules.
+#+END_QUOTE
+
 - *Pointer Types*
 Here is [[http://static.rust-lang.org/doc/master/rust.html#pointer-types][rust's pointer types page]] and a nice [[http://pcwalton.github.io/blog/2013/03/18/an-overview-of-memory-management-in-rust/][blog post]].
 - *Shared pointers*

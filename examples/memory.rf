@@ -1,0 +1,70 @@
+
+
+type resource{
+    desc:string, id:u32
+}
+
+fn use_resource(r:resource)
+{
+    // do something with resource
+}
+
+fn print_string(s:&string) // getting a reference to a string, function does not own the string
+{
+    print(s)
+}
+
+fn setup_resource(r:@resource, new_string:string) //mutable reference to the resource
+{
+    r.string = new_string
+}
+
+
+
+// --- OWNERSHIP ---
+
+// all arguments move ownership by default, unless they are references
+
+fn main_on() -> u32
+{
+    s:string = "foo"
+    r:resource = resource(s, 15) //resource takes ownership of the string
+}
+
+fn main_bad() -> u32
+{
+    s:string = "foo"
+    r:resource = resource(s, 15)
+    // ERROR, s can't be accessed since it got moved inside r
+    print(s)
+}
+
+fn main_ok() -> u32
+{
+    s:string = "foo"
+    print_string(s) // simply using a reference to s, so no ownership movement
+    r:resource = resource(s, 15) // so now this is legal
+}
+
+
+// --- LIFETIMES ----
+
+// lifetime of objects is okay
+fn main_ok() -> u32
+{
+    r:resource = resource("", 15)
+    s:string = "foo"
+    r:resource = setup_resource(r, s)
+    use_resource(r)
+}
+
+
+fn main_bad() -> u32
+{
+    r:resource = resource("", 15)
+    {
+    s:string = "foo"
+    r:resource = setup_resource(r, s)
+    }// after here, s will be deallocated so the reference to it that r has is also invalid so r is used with invalid reference
+    use_resource(r)
+}
