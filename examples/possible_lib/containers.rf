@@ -1,0 +1,19 @@
+module containers {
+
+kind optional {
+    * | nil
+}
+
+kind container {
+	* -> [*]
+}
+
+class iterable_container<container<Y> X> { // overloads for
+	fn get_next(self:X) -> Y|nil
+}
+
+class iterable<X Y> { // overloads for
+	fn get_next(self:X) -> Y|nil
+}
+
+}

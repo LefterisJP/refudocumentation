@@ -1,0 +1,14 @@
+module io {
+    
+from containers import iterable
+type file {
+}
+
+instance iterable<file, string> {
+    fn get_next(file) -> string|nil
+    {
+        // TODO implementation
+    }
+}
+
+}
