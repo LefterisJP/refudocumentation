@@ -356,7 +356,13 @@ int len(list *l)
      }
 }
 #+END_SRC
-
+* Macros
+** Specification
+Macros in refulang are not preprocessor based but are syntactic hygienic macros.
+** Thoughts                                                       :noexport:
+For hygienic macros reference look [[https://en.wikipedia.org/wiki/Macro_%28computer_science%29#Hygienic_macros][at the corresponding wikipedia page]].
+Of considerable interest is a [[http://www.cs.utah.edu/plt/publications/macromod.pdf][paper about Racket's macro system]] and one
+ about [[http://www.cs.utah.edu/plt/publications/gpce12-rf.pdf][language extensibility]]
 * Array types
 ** Specification
 Array types are like simple C arrays that are aware of their own size so as to
@@ -728,7 +734,6 @@ compiler sees that the object is not modified at all inside the function. In tha
 the compiler silently passes by constant reference as an optimization. Pass by reference means that
 the argument is not copied into the function but instead a reference to the original argument
 is passed.
-
 
 * Type Parameters
 ** Specification

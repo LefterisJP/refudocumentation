@@ -16,4 +16,15 @@ class iterable<X Y> { // overloads for
 	fn get_next(self:X) -> Y|nil
 }
 
+type list {
+
+}
+
+type vec {
+}
+
+kind pair<type X, type Y> {
+    X, Y
+}
+
 }

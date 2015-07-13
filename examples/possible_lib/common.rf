@@ -1,0 +1,78 @@
+module common {
+
+    macro writeargs(type X) {
+        forprod name, type in X {
+            #(name, type)
+        }
+    }
+
+    macro readargs(type X) {
+        // somehow would be nice to be able to use containers of the language
+        // like this inside a syntax generating macro like I am doing here
+        // and all ofcourse happening at compile time
+        args = vec<pair>
+        forprod name, type in X {
+            args.add(name, type)
+        }
+        return args
+    }
+
+    class construction<type X> {
+        // by default create a constructor function for each sum option in the type
+        // this happens in compile time, it's like a macro that creates functions for us
+        //
+        // this shows a part of the metaprogramming language inside refulang
+        //
+        // forsum S in X will create the code in the body of the loop for each
+        // sumoption S of the type X.
+        //
+        // `typename(x)` will print the name of the type X
+        //
+        // `makergs(s)` will print to the comma separated arguments of a product
+        //  only type and will also return an argument pair array that will
+        //  contain the printed arguments
+        //
+        // forprod P in S will create the code in the body of the loop for each
+        //  part of a products type
+        //
+        // forargs X, Y will iterate arguments of a product type providing access
+        // to both the name(X) and the type(Y) of each argument
+        forsum S in X {
+           $args = readargs(S)
+            fn #typename(X)(#writeargs(s)) -> X
+            {
+               ret:X
+                forargs NAME, TYPE in ARGS {
+                    ret.TYPE = NAME
+                }
+            }
+        }
+
+
+        // syntax for saying: 1 or more functions taking
+        // any number of arguments but returning a X
+        fn name(...) -> X
+        ...
+    }
+
+    // single function type class along with operator overloading
+    class addable_own<type X> (self:X, other:X) -> X overloads +
+    class addable_other<type X, type Y> (self:X, other:Y) -> X overloads +
+
+
+
+    // as far as arrays/buffers are concerned this will be the syntax
+    // declare an array:
+    //      a:arr<int> = arr<int>(5)     // empty array of 5 inits
+    //      a:arr<int> = [1, 2, 3, 4, 5] // aray of 5 ints
+    // reallocate an array:
+    //     a.resize(50), this will reallocate the array to have space for 50 objects
+    // how much of this can this be done in a meta way and how much should be hard coded?
+    type array<type T> {
+        a:arr<T>
+    }
+
+    instance construction<array<type T>> {
+        // here could be the constructors of an array
+    }
+}

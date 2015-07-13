@@ -1,0 +1,18 @@
+module string {
+    import common
+    import_foreign RFstring, rf_string_append
+
+    type string {
+        !{data:RFstring} // unsafe c code
+    }
+
+    // single function typeclass instance
+    instance addable_own<string>(self:string, other:string) -> string
+    {
+        !{
+            ret:string = self // make sure this copies
+            rf_string_append(ret.data, other.data)
+            return ret
+         }
+    }
+}
