@@ -67,5 +67,5 @@ fn main() -> u32
     // f is of type io::file, should be simply inferred here
     f = io::open("filename")
     people:vec<person> = person_reader(f)
-    //... no do something with the vector of people
+    //... now do something with the vector of people
 }

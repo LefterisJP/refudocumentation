@@ -21,6 +21,14 @@ A string table with all the identifiers occuring in the file
 ** Function
 A function is what all programs are organized in. A function contains an execution block.
 
+** Type
+A type is the definition of a type just like in the normal spec of the language
 ** Basic Block 
 A basic block contains a series of expressions and statements to be executed without any branching. It always contains one
 entry point and one exit point.
+
+** Branch
+It's what is used to transfer control to a different basic block in the same function
+
+** Conditional branch
+Just like branch but with a condition. If the condition is true the control flow is transferred to one basic block, and if false to another.
