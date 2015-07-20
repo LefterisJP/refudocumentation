@@ -3,7 +3,7 @@
 
 * Introduction
 This is currently a work in progress. Nothing is final, nor decided but the purpose
-of this document is to gather everything in one place so that the formal specification of 
+of this document is to gather everything in one place so that the formal specification of
 refulang slowly takes shape.
 * Built-in data types
 ** Specification
@@ -73,7 +73,7 @@ by the =nil= keyword or it has a load of an int and a tail which is another
 list.
 
 In order to construct an instance of a data type you have to use one of its
-constructors. A constructor of an object is simply defined as any of its 
+constructors. A constructor of an object is simply defined as any of its
 sum type operands.
 #+NAME: Constructing an instance of a data type
 #+BEGIN_SRC refu
@@ -84,7 +84,7 @@ b:person = person("celina", 22, "wojtowicz")
 As can be seen below for ease of use arguments can also be given to a
 constructor as keyword arguments. If one keyword argument is passed to a
 constructor then all arguments should be keyword arguments. Finally when
-passing keyword arguments the order of the arguments does not matter as 
+passing keyword arguments the order of the arguments does not matter as
 opposed to when calling a constructor normally.
 
 #+NAME: Constructing an instance of a data type with keyword arguments
@@ -106,12 +106,12 @@ In the above examples list =b= and list =c= are equal. The canonical way to
 define a list would be exactly like list =c= is defined, having /1/ as its
 first element and using nil after /5/ to denote the list's end.
 
-As we can see above to construct a recursive data type we still use a 
+As we can see above to construct a recursive data type we still use a
 constructor but we can take advantage of the fact that the type is recursive
 in order to construct it.
 
 In the case of =b='s construction Refu knows that a list's constructor can
-only accept an int and a next list pointer. Using that knowledge it can 
+only accept an int and a next list pointer. Using that knowledge it can
 expand the =list(1, 2, 3, 4, 5)= to =list(1, list(2, list(3, list(4, list(5, nil)))))=.
 
 Same thing can work for more complex recursive data types such as a binary
@@ -124,10 +124,10 @@ nil | load:int, left:uptr<binary_tree>, right:uptr<binary_tree>
 a:binary_tree = nil
 b:binary_tree = binary_tree(8, (4, (1, 7)), (12, (10, 19)))
 c:binary_tree = binary_tree(
-    8, 
-    binary_tree(4, 
+    8,
+    binary_tree(4,
                     binary_tree(1, nil, nil), binary_tree(7, nil, nil)),
-    binary_tree(12, 
+    binary_tree(12,
                     binary_tree(10, nil, nil), binary_tree(19, nil, nil)))
 #+END_SRC
 
@@ -203,7 +203,7 @@ with only one link like the list.
 }
 #+END_SRC
 
-In the above example list =a= is immutable and is allocated on the stack. As 
+In the above example list =a= is immutable and is allocated on the stack. As
 such the compiler can apply the following optimization to it.
 #+BEGIN_SRC ditaa
 /------------+
@@ -218,7 +218,7 @@ such the compiler can apply the following optimization to it.
 |     nil    |
 +------------/
 #+END_SRC
-You can notice that since it's immutable and since it has only one recursion 
+You can notice that since it's immutable and since it has only one recursion
 path it can be optimized by the compiler to be a simple array.
 
 If on the other hand it's a mutable list like =b= then no such optimization
@@ -245,7 +245,7 @@ can be performed and it would look like this in memory:
 
 Same thing could apply if we had a binary_tree data_structure but the
 optimization would work only in some cases. In other cases where the
-tree is not balanced and there are many leaves it would make no sense to 
+tree is not balanced and there are many leaves it would make no sense to
 try and so such a thing. This is thought in progress.
 
 ** Thoughts                                                       :noexport:
@@ -270,7 +270,7 @@ return [string] + [int]
 A very interesting [[http://paulkoerbitz.de/posts/Understanding-Pointers-Ownership-and-Lifetimes-in-Rust.html][article]] about pointers, ownership and lifetime of objects
 in Rust.
 
-Another very interesting article about types of data is [[http://tel.github.io/2014/07/23/types_of_data/][here]]. A more complete guide to 
+Another very interesting article about types of data is [[http://tel.github.io/2014/07/23/types_of_data/][here]]. A more complete guide to
 the algebra of the algebraic data types is here. ([[http://chris-taylor.github.io/blog/2013/02/10/the-algebra-of-algebraic-data-types/][Part 1]], [[http://chris-taylor.github.io/blog/2013/02/11/the-algebra-of-algebraic-data-types-part-ii/][Part2]], [[http://chris-taylor.github.io/blog/2013/02/13/the-algebra-of-algebraic-data-types-part-iii/][Part 3]])
 ** Implementation considerations                                  :noexport:
 This ADT declaration for a list in refu (data list = 1 + int*list)
@@ -359,6 +359,74 @@ int len(list *l)
 * Macros
 ** Specification
 Macros in refulang are not preprocessor based but are syntactic hygienic macros.
+Modules may contain syntax generating macros along with the other normal functionality.
+The order of evaluation of modules with syntax generating macros is:
+1. Resolve any syntax generating macros in imported modules
+2. Resolve syntax generating macros in this module.
+3. Analyze the imported modules with the evaluated macros
+4. Analyze this module with the evaluated macros.
+
+
+*** Syntax rule macros
+Refu provides really powerful syntax rule generating macros. The user can create their own
+language or sub/languages and later utilize them inside any given module.
+
+New language syntax rules can be defined using the syntax rule macros. Each syntax rule
+needs to specify the language that it will be used by along with the rule itself.
+#+BEGIN_SRC refu
+syntaxrule for refulang {
+for:token bound_object:identifier..+ in:token iterable_object:identifier
+--
+// IMPLEMENT
+}
+#+END_SRC
+*** Syntax/Code generation macros
+
+Syntax generation macros are created using the syntaxgen name(args) { ... } notation.
+They can be later invoked by name and providing the correct number of arguments.
+
+A part of the language's syntax can be legally used inside a sytnaxgen macro along with
+some special commands which are presented below.
+
+**** Argument types
+The arguments that a syntax generating macro invocation can accept are the following.
+
+***** type
+A type argument represent a typename as defined in the normal source by a type definition
+
+***** object
+An identifier denoting an object of any type. Its type can be returned
+
+**** Commands legal inside a syntaxgen macro
+
+***** code(...)
+Anything inside the =code()= command will be evaluated and output as actual source
+language code and will be part of the output of the macro. Any identifier inside
+=code()= that is prepended by # will be evaluated. All others will be output as they are.
+***** typeof(object X)
+Will return the type of a given object
+
+***** forprod
+Allows iteration of all product types of a given type.
+#+BEGIN_SRC refu
+type foo {
+    a:i32, b:f64, c:string
+}
+
+// will generate command sepated lists of members of object b
+syntaxgen generate_object_member(obj b) {
+    forprod name, type in typeof(b) {
+        code(b.#name, )
+    }
+}
+// invoke the macro on an object of type foo
+x:foo
+generate_object_member(x)
+#+END_SRC
+The above will output code: x.a, x.b, x.c,
+
+***** forsum
+Exactly like =forprod= but for sum types and their components.
 ** Thoughts                                                       :noexport:
 For hygienic macros reference look [[https://en.wikipedia.org/wiki/Macro_%28computer_science%29#Hygienic_macros][at the corresponding wikipedia page]].
 Of considerable interest is a [[http://www.cs.utah.edu/plt/publications/macromod.pdf][paper about Racket's macro system]] and one
@@ -366,7 +434,7 @@ Of considerable interest is a [[http://www.cs.utah.edu/plt/publications/macromod
 * Array types
 ** Specification
 Array types are like simple C arrays that are aware of their own size so as to
-make sure there is no out of bounds access. An array is simply a contiguous 
+make sure there is no out of bounds access. An array is simply a contiguous
 block of memory containing values of the same type.
 #+BEGIN_SRC refu
 array_of_ints:int[20]
@@ -519,7 +587,7 @@ foo(true)
 That's because this would require two different implicit conversions.
 ** Explicit conversions
 Explicit conversions allow for quite a bit more freedom for converting between types. An explicit conversion
-is achieved with a function call to the name of the type. Much like a constructor of a user defined type, which 
+is achieved with a function call to the name of the type. Much like a constructor of a user defined type, which
 itself could be thought of as a sort of a type conversion.
 
 All integer types can be converted to each other with explicit conversions, except for constants
@@ -598,7 +666,7 @@ an overkills to show this point.
 
 An owned pointer can also appear inside a data definition. If that happens
 then that means that objects of the data type own the object to which they
-contain an owned pointer. 
+contain an owned pointer.
 
 #+BEGIN_SRC refu
 type file_index {
@@ -619,10 +687,10 @@ fn main()
 {
     i:file_index = something(...)
     a:person = person("jerry", 23, nil)
-    
+
     set_something(&a, &i);
     //from here and on i is owned by b and can't be assigned to anything
-    
+
     b:uptr<person> = a
     //from here and on a can't be accessed
     d:person = a //illegal!
@@ -641,14 +709,14 @@ anymore.
 A shared pointer is a reference counted pointer and is designated by =sptr<T>=.
 //TODO
 *** Raw pointers
-A raw pointer is a plain old C type of pointer to some memory location. It is 
+A raw pointer is a plain old C type of pointer to some memory location. It is
 denoted by =ptr<T>=
 *** References
 //TODO
 
 ** Thoughts                                                       :noexport:
 [[https://doc.rust-lang.org/book/ownership.html][Here]] is a really good explanation of rust's ownership system. We should have a system that is at least as
-powerful/useful as that but maybe even simpler to use in some cases (?). A very important quote about the 
+powerful/useful as that but maybe even simpler to use in some cases (?). A very important quote about the
 borrowing rules in rust is given below:
 #+BEGIN_QUOTE
 First, any borrow must last for a smaller scope than the owner. Second, you may have one or the other of these two kinds of borrows, but not both at the same time:
@@ -701,7 +769,7 @@ fn int_inside_range(x:int, from:int, to:int) -> bool
 #+END_SRC
 
 In the absense of a return value the function's last expression statement
-value is interpreted as the return value. For example the following function's 
+value is interpreted as the return value. For example the following function's
 return value is determined by a + 1
 
 #+BEGIN_SRC refu
@@ -724,7 +792,7 @@ fn find_length(a:~list)->int
 (_, tail) => 1 + find_length(tail)
 #+END_SRC
 *** Argument Evaluation strategy
-The argument evaluation strategy is pass by value by default with some exceptions. 
+The argument evaluation strategy is pass by value by default with some exceptions.
 Pass by value means that the argument's value is copied into the function. All built-in
 data types are passed by value with the exception of =string=. Rules that apply to other
 user defined types also apply to =string=.
@@ -812,7 +880,7 @@ a:const list<int> = list(1, 2, 3)
 foo:list_with_size<int, list> = list_with_size(a, 3)
 #+END_SRC
 
-If for whatever reason you may have needed to represent a list with its size as an extra type over an 
+If for whatever reason you may have needed to represent a list with its size as an extra type over an
 already defined list you could do it as shown above. Notice the usage of =derivative= kind as defined in
 the preceding example.
 
@@ -950,7 +1018,7 @@ instance ampersand<uptr<T>> {
 }
 #+END_SRC
 
-As can be seen above we can simply point to an external function as the implementation of a 
+As can be seen above we can simply point to an external function as the implementation of a
 function for a typeclass instance.
 
 *** Typeclass Inheritance
@@ -987,7 +1055,7 @@ class io <type T> extends (reader, writer) {
 
 The typeclass equality above allows for types that instantiate it to use its
 2 equality function, while the comparison typeclass on the other hand allows for
-greater and less than comparison in addition to the equality functions. Additionally 
+greater and less than comparison in addition to the equality functions. Additionally
 multiple levels of inheritance can be valid as we can see from the =super_comparison=
 typeclass and also multiple inheritance as the =io= typeclass shows.
 
@@ -1445,7 +1513,7 @@ a:foo
 match a {
     string | bool   => "not a number"
     a:(i16 | u16)   => 5 + a
-} 
+}
 #+END_SRC
 
 Another way to define patterns is by using the type operators. As can be seen above
@@ -1540,7 +1608,7 @@ be acceptable.
 * Mutability and Immutability
 ** Specification
 All data are by default mutable in Refu. In order to specify mutability
-the =const= keyword is used. 
+the =const= keyword is used.
 
 #+BEGIN_SRC refu
 type data_record {
