@@ -12,23 +12,38 @@ and is also what's fed to the subsequent levels of processing such as the backen
 Each source files corresponds to one irf object. One irf object can have many
 functions and each function has its own stack and address space.
 
-** String literals table
-A string table with all the string literals occuring in the file
+** Functiondef
+A functiondef defines a function. A function is what all programs are organized in.
+A function is comprised of a return type, argument types and a body. A body is a basic block.
+#+BEGIN_EXAMPLE
+functiondef(name, arguments_types, return type, body)
+#+END_EXAMPLE
 
-** Identifiers table
-A string table with all the identifiers occuring in the file
+** Functioncall
+a functioncall defines a call to a named function of a module
+#+BEGIN_EXAMPLE
+functioncall(name, argument1, ..., argumentN)
+#+END_EXAMPLE
 
-** Function
-A function is what all programs are organized in. A function contains an execution block.
+** Typedef
+Typedef defines a new type. A type is defined just like in the normal spec of the language but
+this is the rir_type seen in the code.
+#+BEGIN_EXAMPLE
+typedef(name, category, subtype1, ..., subtypeN)
+#+END_EXAMPLE
 
-** Type
-A type is the definition of a type just like in the normal spec of the language
 ** Basic Block 
-A basic block contains a series of expressions and statements to be executed without any branching. It always contains one
-entry point and one exit point.
+A basic block contains a series of expressions and statements to be executed without any branching.
+It always contains one entry point and one exit point.
 
 ** Branch
 It's what is used to transfer control to a different basic block in the same function
+#+BEGIN_EXAMPLE
+branch(to_branch)
+#+END_EXAMPLE
 
 ** Conditional branch
 Just like branch but with a condition. If the condition is true the control flow is transferred to one basic block, and if false to another.
+#+BEGIN_EXAMPLE
+condbranch(condition, true_branch, false_branch)
+#+END_EXAMPLE
