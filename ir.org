@@ -12,7 +12,7 @@ and is also what's fed to the subsequent levels of processing such as the backen
 Each source files corresponds to one irf object. One irf object can have many
 functions and each function has its own stack and address space.
 
-** Functiondef
+** Function definition
 A functiondef defines a function. A function is what all programs are organized in.
 A function is comprised of a return type, argument types and a body. A body is a basic block.
 #+BEGIN_EXAMPLE
@@ -47,3 +47,13 @@ Just like branch but with a condition. If the condition is true the control flow
 #+BEGIN_EXAMPLE
 condbranch(condition, true_branch, false_branch)
 #+END_EXAMPLE
+
+** Operations
+
+*** add(a, b)
+
+*** sub(a, b)
+
+*** mul(a, b)
+
+*** div(a, b)
