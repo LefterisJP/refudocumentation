@@ -2,7 +2,7 @@
 #+AUTHOR: Lefteris Karapetsas
 
 * Introduction
-This is currently a work in progress. Nothing is final, nor decided but the purpose
+This is currently a work in progress. Few things are final, or decided but the purpose
 of this document is to gather everything in one place so that the formal specification of
 refulang slowly takes shape.
 * Built-in data types

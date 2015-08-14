@@ -47,9 +47,7 @@ Just like branch but with a condition. If the condition is true the control flow
 #+BEGIN_EXAMPLE
 condbranch(condition, true_branch, false_branch)
 #+END_EXAMPLE
-
 ** Operations
-
 *** add(a, b)
 
 *** sub(a, b)
