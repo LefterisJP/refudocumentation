@@ -215,3 +215,291 @@ http://stackoverflow.com/questions/9190352/abusing-the-algebra-of-algebraic-data
 ** Tail call optimization
 I should try and make sure that many things that require recursion and
 deal with the ADTs strive for tail recursion and [[http://stackoverflow.com/questions/310974/what-is-tail-call-optimization][tail call optimization]]
+* Recursive ADTs considerations
+Recursive data types such as the list or the binary_tree presented above
+can be quite complicated but when the compiler takes mutability into account
+many optimizations can be performed especially for a very simple data structure
+with only one link like the list.
+
+#+BEGIN_SRC refu
+{
+    const a:list = list(1, 2, 3, 4)// this is an immutable list
+    b:uptr<list> = list(1, 2, 3, 4)//mutable list on the heap
+}
+#+END_SRC
+
+In the above example list =a= is immutable and is allocated on the stack. As
+such the compiler can apply the following optimization to it.
+#+BEGIN_SRC ditaa
+/------------+
+|      1     |
++------------|
+|      2     |
++------------+
+|      3     |
++------------|
+|      4     |
++------------|
+|     nil    |
++------------/
+#+END_SRC
+You can notice that since it's immutable and since it has only one recursion
+path it can be optimized by the compiler to be a simple array.
+
+If on the other hand it's a mutable list like =b= then no such optimization
+can be performed and it would look like this in memory:
+#+BEGIN_SRC ditaa
+/------------+
+|      1     |
++------------|
+|     next   |--+
++------------|  |
+|      2     |<-+
++------------+
+|     next   |--+
++------------|  |
+|      3     |<-+
++------------|
+|     next   |--+
++------------|  |
+|      4     |<-+
++------------|
+|      next  |---> nil
++------------/
+#+END_SRC
+
+Same thing could apply if we had a binary_tree data_structure but the
+optimization would work only in some cases. In other cases where the
+tree is not balanced and there are many leaves it would make no sense to
+try and so such a thing. This is thought in progress.
+
+
+
+* ADT Thoughts                                                     :noexport:
+Everything should be a type defined on top of other types. This should
+mimick haskell but I would like to find a nice syntax for it. I really
+like the short explanation of [[http://blog.lab49.com/archives/3011][this]] blog post and could go with similar
+syntax but am afraid it may become complicated. That is why I need to
+think of some syntactic sugar to make it more presentable.
+A feature request from steffen that he claims Haskell and other functional
+languages lack is that of anonymoys types. For example in those languages
+we can't have a function like =do_something(int + string)=. You would have to
+define that as a separate type. In Refu we should be able to have anonymous
+types like this.
+
+Another type related feature request from Steffen is that he would like,
+as a programmer, to be able to define functions that act on types and
+return other types. For example a type function called vectorize that
+takes a type and returns another type which is a vectorized version of
+the original. Like data simple = string + int and vectorize simple would
+return [string] + [int]
+
+A very interesting [[http://paulkoerbitz.de/posts/Understanding-Pointers-Ownership-and-Lifetimes-in-Rust.html][article]] about pointers, ownership and lifetime of objects
+in Rust.
+
+Another very interesting article about types of data is [[http://tel.github.io/2014/07/23/types_of_data/][here]]. A more complete guide to
+the algebra of the algebraic data types is here. ([[http://chris-taylor.github.io/blog/2013/02/10/the-algebra-of-algebraic-data-types/][Part 1]], [[http://chris-taylor.github.io/blog/2013/02/11/the-algebra-of-algebraic-data-types-part-ii/][Part2]], [[http://chris-taylor.github.io/blog/2013/02/13/the-algebra-of-algebraic-data-types-part-iii/][Part 3]])
+* ADT Implementation considerations                                :noexport:
+This ADT declaration for a list in refu (data list = 1 + int*list)
+#+BEGIN_SRC refu
+type list{
+    nil | a:int, next:uptr<list>
+}
+#+END_SRC
+
+Would generate one of the following codes in C:
+#+NAME Method 1
+#+BEGIN_SRC C
+struct list {
+      enum tag { NULL, int_by_list};
+      union {
+             struct {} NULL; //(whatever way that would be represented
+             struct {
+               int 1;
+               list *2; //(whatever way that would be represented
+            }
+    };
+};
+
+#+END_SRC
+
+#+NAME Method 2
+#+BEGIN_SRC C
+enum list_tag { LIST_TAG_NULL, LIST_TAG_CONS }
+struct list {
+    list_tag tag;
+}
+struct list_NULL {
+    list type;  // type.tag = LIST_TAG_NULL
+}
+list_NULL list_NULL_singleton = { LIST_TAG_NULL }
+struct list_CONS {
+    list type; // type.tag = LIST_TAG_CONS
+    int 1;
+    list *2;
+}
+const list *constructor_list_NULL(void) {
+    return (list*)&list_NULL_singleton;
+}
+/*
+A note about the malloc here. Any kind of memory allocation scheme could and should be used.
+For example there could be something like cons_alloc which would simply take blocks of conses
+with different CAR size but same (pointer size) CDR
+*/
+const list *constructor_list_CONS(int i, list *next) {
+     list_CONS *cons = malloc(...);
+     cons.type.tag = LIST_TAG_CONS;
+     cons.1 = i
+    cons.2 = next
+    return (const list*)cons;
+}
+bool is_NULL(list *l)
+{
+     return l->type.tag == LIST_TAG_NULL;
+}
+bool is_CONS(list *l)
+{
+     return l->type.tag == LIST_TAG_CONS;
+}
+#+END_SRC
+
+And as an example of a function using ADTs think of this.
+#+BEGIN_SRC refu
+fn len(a:list) -> int {
+    len NULL = 0
+    len CONS(_, rest) = 1 + len(rest)
+}
+#+END_SRC
+
+This would generate the following in C.
+
+#+BEGIN_SRC C
+int len(list *l)
+{
+     if (l->type.tag == LIST_TAG_NULL) { return 0; }
+     else {
+          list *rest = ((list_CONS*)l)->2;
+          return 1 + len(rest);
+     }
+}
+#+END_SRC
+
+* Thought on Macros
+** Specification
+Macros in refulang are not preprocessor based but are syntactic hygienic macros.
+Modules may contain syntax generating macros along with the other normal functionality.
+The order of evaluation of modules with syntax generating macros is:
+1. Resolve any syntax generating macros in imported modules
+2. Resolve syntax generating macros in this module.
+3. Analyze the imported modules with the evaluated macros
+4. Analyze this module with the evaluated macros.
+
+
+*** Syntax rule macros
+Refu provides really powerful syntax rule generating macros. The user can create their own
+language or sub/languages and later utilize them inside any given module.
+
+New language syntax rules can be defined using the syntax rule macros. Each syntax rule
+needs to specify the language that it will be used by along with the rule itself.
+#+BEGIN_SRC refu
+syntaxrule for refulang {
+for:token bound_object:identifier..+ in:token iterable_object:identifier
+--
+// IMPLEMENT
+}
+#+END_SRC
+*** Syntax/Code generation macros
+
+Syntax generation macros are created using the syntaxgen name(args) { ... } notation.
+They can be later invoked by name and providing the correct number of arguments.
+
+A part of the language's syntax can be legally used inside a sytnaxgen macro along with
+some special commands which are presented below.
+
+**** Argument types
+The arguments that a syntax generating macro invocation can accept are the following.
+
+***** type
+A type argument represent a typename as defined in the normal source by a type definition
+
+***** object
+An identifier denoting an object of any type. Its type can be returned
+
+**** Commands legal inside a syntaxgen macro
+
+***** code(...)
+Anything inside the =code()= command will be evaluated and output as actual source
+language code and will be part of the output of the macro. Any identifier inside
+=code()= that is prepended by # will be evaluated. All others will be output as they are.
+***** typeof(object X)
+Will return the type of a given object
+
+***** forprod
+Allows iteration of all product types of a given type.
+#+BEGIN_SRC refu
+type foo {
+    a:i32, b:f64, c:string
+}
+
+// will generate command sepated lists of members of object b
+syntaxgen generate_object_member(obj b) {
+    forprod name, type in typeof(b) {
+        code(b.#name, )
+    }
+}
+// invoke the macro on an object of type foo
+x:foo
+generate_object_member(x)
+#+END_SRC
+The above will output code: x.a, x.b, x.c,
+
+***** forsum
+Exactly like =forprod= but for sum types and their components.
+** Thoughts                                                       :noexport:
+For hygienic macros reference look [[https://en.wikipedia.org/wiki/Macro_%28computer_science%29#Hygienic_macros][at the corresponding wikipedia page]].
+Of considerable interest is a [[http://www.cs.utah.edu/plt/publications/macromod.pdf][paper about Racket's macro system]] and one
+ about [[http://www.cs.utah.edu/plt/publications/gpce12-rf.pdf][language extensibility]]
+
+* Thoughts on memory model                                         :noexport:
+[[https://doc.rust-lang.org/book/ownership.html][Here]] is a really good explanation of rust's ownership system. We should have a system that is at least as
+powerful/useful as that but maybe even simpler to use in some cases (?). A very important quote about the
+borrowing rules in rust is given below:
+#+BEGIN_QUOTE
+First, any borrow must last for a smaller scope than the owner. Second, you may have one or the other of these two kinds of borrows, but not both at the same time:
+
+    0 to N references (&T) to a resource.
+    exactly one mutable reference (&mut T)
+
+You may notice that this is very similar, though not exactly the same as, to the definition of a data race:
+
+    There is a ‘data race’ when two or more pointers access the same memory location at the same time, where at least one of them is writing, and the operations are not synchronized.
+
+With references, you may have as many as you’d like, since none of them are writing. If you are writing, you need two or more pointers to the same memory, and you can only have one &mut at a time. This is how Rust prevents data races at compile time: we’ll get errors if we break the rules.
+#+END_QUOTE
+
+- *Pointer Types*
+Here is [[http://static.rust-lang.org/doc/master/rust.html#pointer-types][rust's pointer types page]] and a nice [[http://pcwalton.github.io/blog/2013/03/18/an-overview-of-memory-management-in-rust/][blog post]].
+- *Shared pointers*
+   [[http://pcwalton.github.io/blog/2013/06/02/removing-garbage-collection-from-the-rust-language/][Why]] shared pointers are removed from Rust core language and moved to std lib
+
+* Thoughts on Typeclasses                                          :noexport:
+Links for useful reading:
++ [[http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.99.8567&rep=rep1&type=pdf][Software Extension and Integration with Type Classes]]
++ [[http://stackoverflow.com/a/6948534/110395][SO answer on difference between typeclasses and interfaces]]
++ [[http://www.artima.com/weblogs/viewpost.jsp?thread=270195][Type parameters versus generics in Scala]]
+* Thoughts on Error Handling                                       :noexport:
++ (Nice info about [[http://en.wikibooks.org/wiki/Computer_Programming/Error_handling][error handling]] in general and [[http://en.wikibooks.org/wiki/Computer_Programming/Design_by_Contract][Design by contract]] )
++ The way [[http://dlang.org/errors.html][D language handles errors]]
+* Thoughts  on Pattern matching                                    :noexport:
+As very nicely stated on [[http://stackoverflow.com/a/2226292/110395][this SO answer]], pattern matching is the elimination
+construct for algebraic data types. That means that a pattern matching
+expression, expresses how one should consume a partciular ADT.
+* Thoughts on Mutability                                                  :noexport:
+The question of immutability is a very interesting one. There are many
+examples to be drawn from Scala. [[http://www.scala-lang.org/docu/files/collections-api/collections_12.html][Here]] is a list of mutable and immutable
+collections in scala.
+
+Also [[http://docs.scala-lang.org/overviews/collections/overview.html][here]] is a nice piece on the scala docs outlining main differences
+on usage of mutable and immutable collections.
+
+
