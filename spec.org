@@ -242,7 +242,6 @@ a_string = p.string_buffer[2] //the size is checked in runtime and if there is a
 Those buffers will be freed when the containing struct gets freed.
 
 * Types and Conversions
-** Specification
 All elementary types can be converted from and to another type. Type conversion
 can either be explicit or implicit.
 ** Implicit Conversion
@@ -368,9 +367,70 @@ e:bool = (3 == 4)
 e:string = string(e)      // valid conversion
 #+END_SRC
 
+* Ownership
+In refulang there exists the concept of ownership. The compiler tries to determine how each object is used and creates an
+ownership graph. Studying this graph the compiler decides how to allocate an object (in the memory of in the heap) and 
+can detect if the object is properly shared between functions or if there is a problem.
+
+#+BEGIN_SRC refu
+type person {name:string, id:u32}
+
+fn createp(name:string) -> person{
+    p:person = person(name, 1)
+    return p
+}
+
+fn printp(name:string) {
+    p:person = person(name, 1)
+    print(p)
+}
+#+END_SRC
+
+In the above code examples in function =createp()= the =p= object will be allocated on the heap since it needs to be returned,
+while on the =printp()= function the =p= object will only be allocated on the stack since it's only owned by the function.
+
+#+BEGIN_SRC refu
+type person {name:string, id:u32}
+type couple {husband:person, wife:person}
+
+fn createp(name:string) -> person{
+    p:person = person(name, 1)
+    return p
+}
+
+// borrows a person object in a read only manner
+fn rusep(p:&person) {
+    print(p)
+}
+
+// obtain ownership of the passed object
+fn gusep(p:person) {
+    otherp:person = person("Lefteris ", 15)
+    c:couple = couple(p, otherp)
+    // do something with the c couple object, which now owns the passed person
+}
+
+fn main() {
+    p = createp("Celina")
+    rusep(p)
+    guse(p)
+    // can't use p after here
+}
+#+END_SRC
+
+The above code shows how ownership can be transferred across functions. Function =rusep()= can take person objects
+in a read only manner. It can't modify said objects. The lifetime of the =p= person object starts with its creation from
+=createp()= and continues onto being acquired by the =main()= function.
+
+Afterwards it is passed onto =rusep()= in a read only manner. Then the ownership is essentially transferred inside
+=guse()=. There the p object is moved inside a couple object. If the couple object is not used any further then
+both it and the person object will get destroyed.
+
+Any use of the =p= object inside =main()= after that is illegal.
+
 * Memory Model
 The memory model of Refu is very similar to that of C++11. All non-pointer objects
- are allocated on the stack and are freed when they go out of scope.
+are allocated on the stack and are freed when they go out of scope.
 For example:
 #+BEGIN_SRC refu
 {
@@ -459,9 +519,6 @@ A shared pointer is a reference counted pointer and is designated by =sptr<T>=.
 ** Raw pointers
 A raw pointer is a plain old C type of pointer to some memory location. It is
 denoted by =ptr<T>=
-** References
-//TODO
-
 * Functions
 ** General
 Functions in Refu are declared just like in the Rust language. The
@@ -477,7 +534,7 @@ fn add_two_ints(a:int, b:int) -> int
 
 fn print_something()
 {
-     print("something")
+    print("something")
 }
 #+END_SRC
 
@@ -512,9 +569,9 @@ fn do_something(a:int) -> int
 
 Moreover a function can also completely omit a body block if it has a match expression on its arguments like below:
 #+BEGIN_SRC refu
-fn find_length(a:~list)->int
-(nil) => 0
-(_, tail) => 1 + find_length(tail)
+fn find_length(a:~list) -> int
+    (nil) => 0
+    (_, tail) => 1 + find_length(tail)
 #+END_SRC
 ** Argument Evaluation strategy
 The argument evaluation strategy is pass by value by default with some exceptions.
