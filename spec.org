@@ -5,6 +5,16 @@
 This is currently a work in progress. Few things are final, or decided but the purpose
 of this document is to gather everything in one place so that the formal specification of
 refulang slowly takes shape.
+
+** Format of this document
+This document is composed of various sections describing the features and the behaviour of the language. The goal is to serve
+as a spec for the implementation of refulang. Sections that don't have any tag should have in princile been implemented.
+The remaining sections can have one of the remaining tags:
+
+- **Not_Implented**: This feature has not yet been implemented at all and you won't find any mention of it in the codebase
+- **In_Progress**: This feature is currently in progress and is being worked on.
+- **Syntax_Only**: This feature is not really implemented, but the scanning and parsing part of the language is aware of it.
+                   So syntatictally the feature exists but will fail at analysis and/or backend code generation.
 * Built-in data types
 The following data types are built-in. Some of them correspond to the data types
 defined by the C99 standard in =<stdint.h>= but they follow the same naming
@@ -185,7 +195,7 @@ achieving the same thing as in example 1. Example 3 is just an extended
 version of example 2 in which each branch of the match has many statements
 to execute.
 
-* Array types
+* Array types                                               :Not_Implemented:
 Array types are like simple C arrays that are aware of their own size so as to
 make sure there is no out of bounds access. An array is simply a contiguous
 block of memory containing values of the same type.
@@ -367,7 +377,7 @@ e:bool = (3 == 4)
 e:string = string(e)      // valid conversion
 #+END_SRC
 
-* Ownership
+* Ownership                                                     :In_Progress:
 In refulang there exists the concept of ownership. The compiler tries to determine how each object is used and creates an
 ownership graph. Studying this graph the compiler decides how to allocate an object (in the memory of in the heap) and 
 can detect if the object is properly shared between functions or if there is a problem.
@@ -403,11 +413,16 @@ fn rusep(p:&person) {
     print(p)
 }
 
+fn gusec(c:couple) {
+    print(c)
+}
+
 // obtain ownership of the passed object
 fn gusep(p:person) {
     otherp:person = person("Lefteris ", 15)
     c:couple = couple(p, otherp)
     // do something with the c couple object, which now owns the passed person
+    gusec(c)
 }
 
 fn main() {
@@ -423,108 +438,21 @@ in a read only manner. It can't modify said objects. The lifetime of the =p= per
 =createp()= and continues onto being acquired by the =main()= function.
 
 Afterwards it is passed onto =rusep()= in a read only manner. Then the ownership is essentially transferred inside
-=guse()=. There the p object is moved inside a couple object. If the couple object is not used any further then
-both it and the person object will get destroyed.
+=guse()=. There the p object is moved inside a couple object.
 
 Any use of the =p= object inside =main()= after that is illegal.
 
-* Memory Model
-The memory model of Refu is very similar to that of C++11. All non-pointer objects
-are allocated on the stack and are freed when they go out of scope.
-For example:
-#+BEGIN_SRC refu
-{
-    a:int
-    s:string
-} //neither a nor s will be accesible after here
-#+END_SRC
+As for the =c= couple object it's passed onto the =gusec()= function which then owns it. At the end of the function the =c=
+couple object will be destroy and =p= along with it.
 
-To allocate memory in the heap a pointer type is used. If a pointer type gets
-declared in a scope it has to be initialized. This way we can avoid dangling
-pointers.
-
-** Unique pointers
-A unique pointer, is a special generic type represented by =uptr<T>=
-For example
-#+BEGIN_SRC refu
-type person {
-    name:string,
-    age:int
-}
-
-fn main()
-{
-    a:person = person("jerry", 22)
-    b:uptr<person> = make_uptr(person("john", 15))
-    c = make_uptr(person("james", 31))
-    d = b
-    // from here and on b can't be used
-}
-#+END_SRC
-
-A unique pointer is also known as an /owned pointer/. What this means is
-that the pointer is owned by the scope it is in. As an example at the above
-code =b= is initialized and acquires ownership of John. Then =d= takes
-ownership of john by the assignment.
-
-Any use of b afterwards would be invalid and would raise a compiler error.
-Another thing to note is that the fact that a variable is a pointer type can be
-automatically deduced as is the case above with =c=. The way =b= is declared is kind of
-an overkills to show this point.
-
-An owned pointer can also appear inside a data definition. If that happens
-then that means that objects of the data type own the object to which they
-contain an owned pointer.
-
-#+BEGIN_SRC refu
-type file_index {
-    nil | index:uptr<something>
-}
-type person {
-    name:string,
-    age:int,
-    index:uptr<file_index>
-}
-
-fn set_something(p:&person, i:uptr<file_index>)
-{
-    p.index = file_index
-}
-
-fn main()
-{
-    i:file_index = something(...)
-    a:person = person("jerry", 23, nil)
-
-    set_something(&a, &i);
-    //from here and on i is owned by b and can't be assigned to anything
-
-    b:uptr<person> = a
-    //from here and on a can't be accessed
-    d:person = a //illegal!
-}
-#+END_SRC
-
-Noteworthy from above is how we can denote that a pointer can be pointing
-to a special value that means empty as we can see from the definition of
-the =file_index= object.
-
-Another thing to note is the assignment of the object owned by =a= to =b=.
-Since they are both owned pointers of an object the assignment operation
-simply moves the ownership of the pointer and as such =b= can't be accessed
-anymore.
-** Shared pointers
-A shared pointer is a reference counted pointer and is designated by =sptr<T>=.
-//TODO
-** Raw pointers
-A raw pointer is a plain old C type of pointer to some memory location. It is
-denoted by =ptr<T>=
 * Functions
-** General
 Functions in Refu are declared just like in the Rust language. The
 keyword =fn= followed by the name of the function, the arguments and
-finally by an arrow pointing to the return value.  If there is no return
-value then the arrow is omitted. Some examples follow:
+finally by an arrow pointing to the return value.
+
+** Return value
+As mentioned, whatever follow =->= is the function's return value.
+If there is no return value then the arrow is omitted. Some examples follow:
 
 #+BEGIN_SRC refu
 fn add_two_ints(a:int, b:int) -> int
@@ -574,18 +502,11 @@ fn find_length(a:~list) -> int
     (_, tail) => 1 + find_length(tail)
 #+END_SRC
 ** Argument Evaluation strategy
-The argument evaluation strategy is pass by value by default with some exceptions.
-Pass by value means that the argument's value is copied into the function. All built-in
-data types are passed by value with the exception of =string=. Rules that apply to other
-user defined types also apply to =string=.
+The argument evaluation strategy is pass by value for all elementary types, except for =string=. That means that they are
+copied inside the function. Objects of all user defined types are passed by reference, which means that simply a pointer to the object
+is passed along in the function. TODO: Some more details and optimization here.
 
-Instances of a user defined type are passed by value, except for the case when the
-compiler sees that the object is not modified at all inside the function. In that case
-the compiler silently passes by constant reference as an optimization. Pass by reference means that
-the argument is not copied into the function but instead a reference to the original argument
-is passed.
-
-* Type Parameters
+* Type Parameters                                               :Syntax_Only:
 Refu supports type parameters, which syntactically look like generics of some other programming languages. Their use will
 be seen heavily in the use of typeclass below but first let's see the syntax.
 
@@ -620,10 +541,10 @@ a:binary_tree<double> = ( 1.0, (0.1, (0.01), (0.2)),  (2.0, (1.5, 3.3)))
 a:binary_tree<double> = (1.0, cons(0.1, cons(0.01, Nil), cons(0.2, Nil) ),  cons(2.0, cons(1.5, Nil), cons(3.3, Nil)))
 #+END_SRC
 
-Type paramerers can. Type parameters can be of either a concrete type as designated by =type=
+Type parameters can be of either a concrete type as designated by =type=
 or by a type of a type also known as a =kind=. We will read more about kinds in the corresponding section.
 
-* Kinds
+* Kinds                                                     :Not_Implemented:
 Kinds are like the types of types. For example =type= is a concrete type while
  =derivative= is a kind defined as:
 
@@ -664,7 +585,7 @@ If for whatever reason you may have needed to represent a list with its size as 
 already defined list you could do it as shown above. Notice the usage of =derivative= kind as defined in
 the preceding example.
 
-* Typeclasses
+* Typeclasses                                               :Not_Implemented:
 Refu relies heavily on the use of typeclasses. They are an important
 way to guarantee behaviour about objects of a given type. There are quite a few builtin
 typeclasses in the standard library. The concept of a typeclass is similar to that of an
@@ -912,7 +833,7 @@ extraneous situations.
 
 There are multiple ways to actually handle errors in a function and we
 will present them here.
-** Exceptions
+** Exceptions                                              :Not_Implemented:
   Exceptions can be raised at any point during the code and the stack
   will unwind, calling the deallocators of all objects it encounters
   until a catch is hit.
@@ -962,7 +883,7 @@ type negative_in_sqrt {
 throw negative_in_sqrt("this is an error message")
 
 #+END_SRC
-** Design By Contract
+** Design By Contract                                      :Not_Implemented:
 A function can have a contract with its caller. Such contracts are made up
 of calling preconditions and calling postconditions. If possible these
 checks are performed in compile time, and compiled away for the runtime.
@@ -1040,7 +961,7 @@ module geometry{
 
 }//end of module
 #+END_SRC
-
+** Signatures                                              :Not_Implemented:
 Another way to organize modules and by far the preferred way is to
 separate a module's signature from its implementation. This allows for
 separation of interface from implementation, module typechecking, cleaner
@@ -1283,7 +1204,7 @@ Another way to define patterns is by using the type operators. As can be seen ab
 one can combine possible type reductions using the same operators we use when a
 type is defined.
 
-* For expressions
+* For expressions                                           :Not_Implemented:
 The simplest way to iterate something in refu is by using a for
 expression. The syntax is simple. For a simple iteration of n times one
 can use the following.
@@ -1362,26 +1283,7 @@ If the for block had something that is not an int, or if it had more
 statements then it would be a compile error. On the left hand of the
 assignment any identifier whose type would agree with =(Nil | int, T)= would
 be acceptable.
-* Mutability and Immutability
-All data are by default mutable in Refu. In order to specify mutability
-the =const= keyword is used.
-
-#+BEGIN_SRC refu
-type data_record {
-    index:int, name:string
-}
-
-fn just_read(record:const data_record)
-{
-    do_something_with_record_index(record.index)
-}
-#+END_SRC
-
-By defining an object as immutable the compiler can reason about the logic
-of the program in a very different way and optimize things away. In addition
-it serves as a way to document functions and interfaces between modules to
-denote whethen some data can be modified or not.
-* Parallel Processing Framework / Parallel Routines
+* Parallel Processing Framework / Parallel Routines         :Not_Implemented:
 In Refu many small lightweight threads can be spawned. They are called
 routines and can be created with the rt keyword.
 For example:
