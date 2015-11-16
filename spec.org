@@ -1,5 +1,6 @@
 #+TITLE: Refu language specification
 #+AUTHOR: Lefteris Karapetsas
+#+OPTIONS: ^:nil
 
 * Introduction
 This is currently a work in progress. Few things are final, or decided but the purpose
@@ -795,7 +796,7 @@ Here we can see an additional feature. Instances of a typeclass can optionally h
 an extra identifier if we implement more than one instance of a typeclass for a type.
 But why will this not compile? Well simply because 2 different instances
 are declared for a type without specifying one as the default implementation for all objects of type vector.
-#+BEGIN_SRC C++
+#+BEGIN_SRC refu
 instance ordering ord_ascend<vector> = default{
     fn(self)
     {
@@ -822,6 +823,11 @@ a:list // ord_ascend
 b:list<ordering: ord_ascend> // ord_ascend
 c:list<ordering: ord_descend> //ord_descend
 #+END_SRC
+
+* Macros                                                    :Not_Implemented:
+Macros are heavily inspired by the way [[http://docs.racket-lang.org/guide/macros.html][racket]] does macros, offering the ability to totally customize and add new constructs
+in the language itself.
+
 
 * Error Handling
 Error handling is a very serious topic. Refu attempts to make it easy for
@@ -1300,3 +1306,7 @@ rt print_some_stuff
 
 Routines can be communicated to via message passing. ...
 More thinking to go here ...TODO
+* Refu IR
+Refu compiles to an intermediate format which then gets translated to the various backends
+that may exist. The compiled IR is what objects files are to C/C++ type of languages. A
+complete description of the IR can be found [[file:ir.org][here]].
